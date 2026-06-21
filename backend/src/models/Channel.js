@@ -18,4 +18,6 @@ const channelSchema = new mongoose.Schema(
   }
 );
 
+channelSchema.index({ serverId: 1, name: 1 }, { unique: true });
+
 export default mongoose.model("Channel", channelSchema);

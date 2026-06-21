@@ -1,11 +1,14 @@
 import { Router } from "express";
+import {
+  createChannel,
+  getChannelsByServer,
+  getChannelById
+} from "../controllers/channel.controller.js";
 
 const router = Router();
 
-router.get("/", (req, res) => {
-  res.json({
-    message: "Ruta de canales funcionando"
-  });
-});
+router.post("/", createChannel);
+router.get("/server/:serverId", getChannelsByServer);
+router.get("/:id", getChannelById);
 
 export default router;

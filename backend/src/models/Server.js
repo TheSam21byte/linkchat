@@ -10,6 +10,11 @@ const serverSchema = new mongoose.Schema(
     description: {
       type: String,
       default: ""
+    },
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
     }
   },
   {

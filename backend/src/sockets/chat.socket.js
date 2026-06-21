@@ -1,3 +1,5 @@
+import Message from "../models/Message.js";
+
 const connectedUsers = new Map();
 
 export const configureChatSocket = (io) => {
@@ -19,15 +21,29 @@ export const configureChatSocket = (io) => {
       });
     });
 
-    socket.on("send_message", ({ username, channelId, message }) => {
-      const data = {
-        usuario: username,
-        mensaje: message,
-        channelId,
-        hora: new Date().toLocaleTimeString()
-      };
+    socket.on("send_message", async ({ username, channelId, message }) => {
+      try {
+        const savedMessage = await Message.create({
+          username,
+          channelId,
+          content: message,
+          type: "public"
+        });
 
-      io.to(channelId).emit("receive_message", data);
+        const data = {
+          id: savedMessage._id,
+          usuario: username,
+          mensaje: message,
+          channelId,
+          hora: new Date().toLocaleTimeString()
+        };
+
+        io.to(channelId).emit("receive_message", data);
+      } catch (error) {
+        socket.emit("error_message", {
+          message: "No se pudo guardar el mensaje en la base de datos"
+        });
+      }
     });
 
     socket.on("get_users", ({ channelId }) => {
