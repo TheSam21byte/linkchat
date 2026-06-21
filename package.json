@@ -1,0 +1,12 @@
+{
+  "name": "linkchat",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "heroku-postbuild": "npm install --prefix backend",
+    "start": "npm start --prefix backend"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
