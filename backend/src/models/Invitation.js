@@ -5,7 +5,8 @@ const invitationSchema = new mongoose.Schema(
     code: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
+      trim: true
     },
     serverId: {
       type: mongoose.Schema.Types.ObjectId,

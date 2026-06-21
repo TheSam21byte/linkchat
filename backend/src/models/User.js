@@ -5,7 +5,18 @@ const userSchema = new mongoose.Schema(
     username: {
       type: String,
       required: true,
-      trim: true
+      unique: true,
+      trim: true,
+      minlength: 3
+    },
+    status: {
+      type: String,
+      enum: ["online", "offline", "busy"],
+      default: "offline"
+    },
+    lastSeen: {
+      type: Date,
+      default: null
     }
   },
   {
