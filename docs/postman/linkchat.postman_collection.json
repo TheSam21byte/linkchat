@@ -1,0 +1,67 @@
+{
+  "info": {
+    "name": "LinkChat API",
+    "description": "Coleccion base para pruebas REST del proyecto LinkChat.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "serverId", "value": "" },
+    { "key": "channelId", "value": "" },
+    { "key": "inviteCode", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": { "method": "GET", "url": "{{baseUrl}}/" }
+    },
+    {
+      "name": "Start user",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"German\"\n}" },
+        "url": "{{baseUrl}}/api/users/start"
+      }
+    },
+    {
+      "name": "Create server",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Sistemas Distribuidos\",\n  \"description\": \"Servidor de prueba LinkChat\",\n  \"ownerUsername\": \"German\"\n}" },
+        "url": "{{baseUrl}}/api/servers"
+      }
+    },
+    {
+      "name": "List servers",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/servers" }
+    },
+    {
+      "name": "Create invitation",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"serverId\": \"{{serverId}}\"\n}" },
+        "url": "{{baseUrl}}/api/invitations"
+      }
+    },
+    {
+      "name": "Join by invitation",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"Invitado1\"\n}" },
+        "url": "{{baseUrl}}/api/invitations/join/{{inviteCode}}"
+      }
+    },
+    {
+      "name": "Get channels by server",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/channels/server/{{serverId}}" }
+    },
+    {
+      "name": "Get messages by channel",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/messages/channel/{{channelId}}" }
+    }
+  ]
+}

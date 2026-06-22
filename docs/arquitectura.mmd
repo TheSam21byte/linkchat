@@ -1,0 +1,10 @@
+flowchart LR
+  U1[Cliente web 1] --> FE[Frontend React + Vite]
+  U2[Cliente web 2] --> FE
+  U3[Cliente movil/navegador] --> FE
+  FE -->|REST API| BE[Backend Node.js + Express]
+  FE <-->|Socket.IO| BE
+  BE -->|Mongoose| DB[(MongoDB Atlas)]
+  BE --> INV[Invitaciones]
+  BE --> CH[Canales]
+  BE --> MSG[Mensajes]
