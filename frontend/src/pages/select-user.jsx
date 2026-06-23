@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AlertCircle, LoaderCircle, MessageCircle, UserRound } from 'lucide-react'
+import AppLogo from '../components/app-logo'
 import { startUser } from '../services/users-api'
 
 function SelectUser({ helperText, onBack, onUserSelected }) {
@@ -35,9 +36,7 @@ function SelectUser({ helperText, onBack, onUserSelected }) {
     <section className="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_top_left,#ccfbf1,transparent_32%),linear-gradient(135deg,#f8fafc,#eef2ff)] px-5 py-8 text-slate-950">
       <div className="w-full max-w-md rounded-lg border border-white/70 bg-white/90 p-7 text-left shadow-2xl shadow-slate-300/60 backdrop-blur">
         <div className="mb-6">
-          <div className="mb-4 inline-flex size-12 items-center justify-center rounded-lg bg-teal-700 text-white shadow-lg shadow-teal-700/20">
-            <MessageCircle size={24} strokeWidth={2.4} aria-hidden="true" />
-          </div>
+          <AppLogo className="mb-4" imageClassName="size-12" />
           <p className="mb-2 text-sm font-bold uppercase tracking-normal text-teal-700">
             LinkChat
           </p>

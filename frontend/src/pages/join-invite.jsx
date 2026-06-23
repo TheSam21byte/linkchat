@@ -5,9 +5,9 @@ import {
   Hash,
   LoaderCircle,
   MessageCircle,
-  Server,
   UserRound,
 } from 'lucide-react'
+import AppLogo from '../components/app-logo'
 import heroImage from '../assets/hero.png'
 
 function JoinInvitePage({ code, onBack, onJoin, onLoadInvite }) {
@@ -77,6 +77,12 @@ function JoinInvitePage({ code, onBack, onJoin, onLoadInvite }) {
 
       <section className="relative z-10 grid w-full max-w-5xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="self-center">
+          <AppLogo
+            showLabel
+            className="mb-5"
+            imageClassName="size-14"
+            labelClassName="text-3xl text-white"
+          />
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-teal-100 backdrop-blur">
             <Hash size={16} aria-hidden="true" />
             Invitacion LinkChat
@@ -95,11 +101,11 @@ function JoinInvitePage({ code, onBack, onJoin, onLoadInvite }) {
           onSubmit={handleJoin}
         >
           <div className="mb-5">
-            <div className="mb-4 grid size-12 place-items-center rounded-lg bg-teal-700 text-white">
+            <div className="mb-4 grid size-12 place-items-center rounded-lg bg-white shadow-lg shadow-teal-950/20">
               {isLoading ? (
-                <LoaderCircle className="animate-spin" size={23} />
+                <LoaderCircle className="animate-spin text-teal-700" size={23} />
               ) : (
-                <Server size={24} aria-hidden="true" />
+                <AppLogo imageClassName="size-12" />
               )}
             </div>
             <p className="text-sm font-bold uppercase tracking-normal text-teal-700">
