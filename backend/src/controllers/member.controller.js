@@ -1,5 +1,62 @@
 import mongoose from "mongoose";
 import Member from "../models/Member.js";
+import Server from "../models/Server.js";
+import User from "../models/User.js";
+
+export const addMemberToServer = async (req, res) => {
+  try {
+    const { userId, serverId, role = "member", nickname } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(serverId)) {
+      return res.status(400).json({
+        message: "userId o serverId no valido"
+      });
+    }
+
+    const [user, server] = await Promise.all([
+      User.findById(userId),
+      Server.findById(serverId)
+    ]);
+
+    if (!user || !server) {
+      return res.status(404).json({
+        message: "Usuario o servidor no encontrado"
+      });
+    }
+
+    const member = await Member.findOneAndUpdate(
+      { userId, serverId },
+      {
+        $set: {
+          role,
+          nickname: nickname || user.username,
+          active: true
+        },
+        $setOnInsert: {
+          userId,
+          serverId
+        }
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true
+      }
+    )
+      .populate("userId", "username status")
+      .populate("serverId", "name description");
+
+    res.status(201).json({
+      message: "Miembro agregado correctamente",
+      member
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al agregar miembro",
+      error: error.message
+    });
+  }
+};
 
 export const getMembersByServer = async (req, res) => {
   try {
