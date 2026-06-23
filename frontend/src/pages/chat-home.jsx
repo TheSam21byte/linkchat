@@ -8,6 +8,7 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react'
+import AppLogo from '../components/app-logo'
 import {
   getContacts,
   getDirectMessages,
@@ -136,9 +137,7 @@ function ChatHome({ currentUser, onLogout, onServerSelected }) {
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <div className="grid min-h-screen grid-cols-[76px_280px_1fr] overflow-hidden max-lg:grid-cols-[72px_240px_1fr] max-md:grid-cols-1">
         <aside className="flex flex-col items-center gap-3 border-r border-slate-200 bg-slate-950 px-3 py-4 text-white max-md:hidden">
-          <div className="grid size-12 place-items-center rounded-lg bg-teal-600 shadow-lg shadow-teal-900/40">
-            <MessageCircle size={24} aria-hidden="true" />
-          </div>
+          <AppLogo imageClassName="size-12" />
 
           <div className="my-2 h-px w-10 bg-white/15" />
 
@@ -172,6 +171,12 @@ function ChatHome({ currentUser, onLogout, onServerSelected }) {
 
         <aside className="border-r border-slate-200 bg-white max-md:border-r-0">
           <div className="border-b border-slate-200 p-4">
+            <AppLogo
+              showLabel
+              className="mb-4"
+              imageClassName="size-10"
+              labelClassName="text-lg text-slate-950"
+            />
             <p className="text-xs font-bold uppercase tracking-normal text-teal-700">
               Sesion activa
             </p>

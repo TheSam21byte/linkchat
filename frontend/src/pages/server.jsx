@@ -5,10 +5,9 @@ import {
   Hash,
   LoaderCircle,
   LogOut,
-  MessageCircle,
   Send,
-  Server,
 } from 'lucide-react'
+import AppLogo from '../components/app-logo'
 import {
   getChannelMessages,
   getServerChannels,
@@ -28,6 +27,7 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [error, setError] = useState('')
+  const [channelNotice, setChannelNotice] = useState('')
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
   const messagesEndRef = useRef(null)
   const [isSocketConnected, setIsSocketConnected] = useState(false)
@@ -147,16 +147,7 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
     })
 
     socket.on('system_message', (data) => {
-      const systemMessage = {
-        _id: `system-${Date.now()}`,
-        username: data.usuario ?? 'Sistema',
-        content: data.mensaje,
-        channelId: data.channelId ?? selectedChannelId,
-        createdAt: new Date().toISOString(),
-        type: 'system',
-      }
-
-      setMessages((currentMessages) => [...currentMessages, systemMessage])
+      setChannelNotice(data.mensaje ?? 'Actividad nueva en el canal')
     })
 
     socket.on('error_message', (data) => {
@@ -222,9 +213,7 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
             </div>
 
             <div className="flex items-start gap-3">
-              <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-teal-600 shadow-lg shadow-teal-900/40">
-                <Server size={24} aria-hidden="true" />
-              </span>
+              <AppLogo imageClassName="size-12" />
               <div className="min-w-0">
                 <h1 className="break-words text-xl font-semibold">
                   {server.name}
@@ -292,13 +281,19 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
                 {selectedChannel?.name ?? 'Selecciona un canal'}
               </h2>
             </div>
-            <MessageCircle className="text-teal-700" size={24} />
+            <AppLogo imageClassName="size-10" />
           </header>
 
           {error ? (
             <div className="m-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               <AlertCircle className="mt-0.5 shrink-0" size={18} />
               <span>{error}</span>
+            </div>
+          ) : null}
+
+          {channelNotice ? (
+            <div className="mx-4 mt-4 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">
+              {channelNotice}
             </div>
           ) : null}
 

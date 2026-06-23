@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import {
   ArrowRight,
-  Hash,
   MessageCircle,
   Radio,
   ShieldCheck,
   UsersRound,
 } from 'lucide-react'
+import AppLogo from '../components/app-logo'
 import heroImage from '../assets/hero.png'
 
-function LandingPage({ currentUser, onEnterApp, onJoinInvite }) {
+function LandingPage({ currentUser, onJoinInvite }) {
   const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
   const [isJoining, setIsJoining] = useState(false)
@@ -50,24 +50,21 @@ function LandingPage({ currentUser, onEnterApp, onJoinInvite }) {
               Chat en tiempo real para equipos pequenos
             </div>
 
-            <h1 className="text-5xl font-bold leading-tight max-md:text-4xl">
-              LinkChat
-            </h1>
+            <AppLogo
+              showLabel
+              className="mb-5"
+              imageClassName="size-16"
+              labelClassName="text-5xl leading-tight text-white max-md:text-4xl"
+            />
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">
               Una experiencia tipo mini-Discord para entrar a servidores,
               participar en canales y conversar al instante con tu comunidad.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button
-                type="button"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-teal-500 px-5 font-bold text-slate-950 transition hover:bg-teal-300 focus:outline-none focus:ring-4 focus:ring-teal-200/40"
-                onClick={onEnterApp}
-              >
-                Entrar al aplicativo
-                <ArrowRight size={18} aria-hidden="true" />
-              </button>
-            </div>
+            <p className="mt-8 max-w-xl rounded-lg border border-white/10 bg-white/10 p-4 text-sm leading-6 text-slate-200 backdrop-blur">
+              El acceso al chat se realiza mediante un codigo de invitacion.
+              Pega tu codigo para entrar directamente al servidor y sus canales.
+            </p>
 
             <div className="mt-10 grid max-w-2xl grid-cols-3 gap-3 max-sm:grid-cols-1">
               <div className="rounded-lg border border-white/10 bg-white/10 p-4 backdrop-blur">
@@ -93,9 +90,7 @@ function LandingPage({ currentUser, onEnterApp, onJoinInvite }) {
             onSubmit={handleJoinInvite}
           >
             <div className="mb-5">
-              <div className="mb-4 grid size-12 place-items-center rounded-lg bg-teal-700 text-white">
-                <Hash size={24} aria-hidden="true" />
-              </div>
+              <AppLogo className="mb-4" imageClassName="size-12" />
               <p className="text-sm font-bold uppercase tracking-normal text-teal-700">
                 Invitacion directa
               </p>
@@ -110,7 +105,7 @@ function LandingPage({ currentUser, onEnterApp, onJoinInvite }) {
 
             {currentUser ? (
               <p className="mb-3 rounded-lg bg-teal-50 p-3 text-sm font-semibold text-teal-800">
-                Entraras como {currentUser.username}.
+                Sesion recordada: entraras como {currentUser.username}.
               </p>
             ) : null}
 

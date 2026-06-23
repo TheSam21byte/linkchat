@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import ChatHome from './pages/chat-home'
 import JoinInvitePage from './pages/join-invite'
 import LandingPage from './pages/landing'
 import ServerPage from './pages/server'
@@ -160,7 +159,6 @@ function App() {
     return (
       <LandingPage
         currentUser={currentUser}
-        onEnterApp={() => setScreen(currentUser ? 'home' : 'select-user')}
         onJoinInvite={handleJoinInvite}
       />
     )
@@ -196,13 +194,7 @@ function App() {
     )
   }
 
-  return (
-    <ChatHome
-      currentUser={currentUser}
-      onLogout={handleLogout}
-      onServerSelected={setSelectedServer}
-    />
-  )
+  return <LandingPage currentUser={currentUser} onJoinInvite={handleJoinInvite} />
 }
 
 export default App
