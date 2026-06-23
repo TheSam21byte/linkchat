@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import ChatHome from './pages/chat-home'
 import JoinInvitePage from './pages/join-invite'
 import LandingPage from './pages/landing'

@@ -44,7 +44,7 @@ export const createInvitation = async (req, res) => {
     res.status(201).json({
       message: "Invitación creada correctamente",
       invitation,
-      inviteUrl: `http://localhost:5173/invite/${invitation.code}`
+      inviteUrl: `${process.env.CLIENT_URL}/invite/${invitation.code}`
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -102,88 +102,72 @@ export const getInvitationByCode = async (req, res) => {
 
 export const joinByInvitation = async (req, res) => {
   try {
-    const { code } = req.params;
-    const username = req.body.username?.trim();
+    const { code } = req.params
+    const { username } = req.body
 
     if (!username) {
       return res.status(400).json({
-        message: "El username es obligatorio"
-      });
+        message: 'El username es obligatorio',
+      })
     }
 
     const invitation = await Invitation.findOne({
       code,
-      active: true
-    });
+      active: true,
+    }).populate('serverId')
 
     if (!invitation) {
       return res.status(404).json({
-        message: "Invitación no válida o inactiva"
-      });
+        message: 'Invitación no encontrada o inactiva',
+      })
     }
 
     const user = await User.findOneAndUpdate(
-      { username },
+      { username: username.trim() },
       {
-        $set: {
-          status: "online",
-          lastSeen: null
-        },
-        $setOnInsert: {
-          username
-        }
+        username: username.trim(),
+        status: 'online',
+        lastSeen: null,
       },
       {
-        new: true,
         upsert: true,
-        runValidators: true
-      }
-    );
+        returnDocument: 'after',
+        runValidators: true,
+      },
+    )
 
     const member = await Member.findOneAndUpdate(
       {
         userId: user._id,
-        serverId: invitation.serverId
+        serverId: invitation.serverId._id,
       },
       {
-        $set: {
-          active: true,
-          nickname: username
-        },
-        $setOnInsert: {
-          userId: user._id,
-          serverId: invitation.serverId,
-          role: "member",
-          joinedAt: new Date()
-        }
+        userId: user._id,
+        serverId: invitation.serverId._id,
+        role: 'member',
+        active: true,
+        joinedAt: new Date(),
       },
       {
-        new: true,
         upsert: true,
-        runValidators: true
-      }
-    );
-
-    res.json({
-      message: "Usuario unido al servidor correctamente",
-      user: {
-        id: user._id,
-        username: user.username
+        returnDocument: 'after',
+        runValidators: true,
       },
-      member: {
-        id: member._id,
-        serverId: member.serverId,
-        role: member.role,
-        active: member.active
-      }
-    });
+    )
+
+    return res.status(200).json({
+      message: 'Usuario unido al servidor correctamente',
+      user,
+      server: invitation.serverId,
+      member,
+    })
   } catch (error) {
-    res.status(500).json({
-      message: "Error al unirse mediante invitación",
-      error: error.message
-    });
+    return res.status(500).json({
+      message: 'Error al unirse mediante invitación',
+      error: error.message,
+    })
   }
-};
+}
 
 export const disableInvitation = async (req, res) => {
   try {
