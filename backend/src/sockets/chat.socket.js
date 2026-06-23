@@ -32,11 +32,16 @@ export const configureChatSocket = (io) => {
 
         const data = {
           id: savedMessage._id,
+          _id: savedMessage._id,
           usuario: username,
+          username,
           mensaje: message,
+          content: message,
           channelId,
-          hora: new Date().toLocaleTimeString()
-        };
+          type: savedMessage.type,
+          hora: new Date().toLocaleTimeString(),
+          createdAt: savedMessage.createdAt,
+        }
 
         io.to(channelId).emit("receive_message", data);
       } catch (error) {
