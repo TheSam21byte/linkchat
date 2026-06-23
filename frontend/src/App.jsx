@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ChatHome from './pages/chat-home'
+import JoinInvitePage from './pages/join-invite'
 import LandingPage from './pages/landing'
 import ServerPage from './pages/server'
 import SelectUser from './pages/select-user'
@@ -8,6 +9,7 @@ import {
   getServerById,
   joinInvitation,
 } from './services/chat-api'
+import { startUser } from './services/users-api'
 
 function getStoredUser() {
   try {
@@ -34,11 +36,40 @@ function normalizeServer(server, role = 'member') {
   }
 }
 
+function getInviteCodeFromPath() {
+  const segments = window.location.pathname.split('/').filter(Boolean)
+
+  if (segments[0] === 'invite' && segments[1]) {
+    return decodeURIComponent(segments[1])
+  }
+
+  if (
+    segments[0] === 'api' &&
+    segments[1] === 'invitations' &&
+    segments[2] === 'join' &&
+    segments[3]
+  ) {
+    return decodeURIComponent(segments[3])
+  }
+
+  return ''
+}
+
+function clearInvitePath() {
+  if (window.location.pathname !== '/') {
+    window.history.replaceState({}, '', '/')
+  }
+}
+
 function App() {
+  const initialInviteCode = getInviteCodeFromPath()
   const [currentUser, setCurrentUser] = useState(() => getStoredUser())
   const [selectedServer, setSelectedServer] = useState(null)
   const [pendingInvite, setPendingInvite] = useState(null)
-  const [screen, setScreen] = useState('landing')
+  const [directInviteCode, setDirectInviteCode] = useState(initialInviteCode)
+  const [screen, setScreen] = useState(
+    initialInviteCode ? 'join-invite' : 'landing',
+  )
 
   async function resolveInvite(code) {
     const invitation = await getInvitationByCode(code)
@@ -64,6 +95,7 @@ function App() {
     setPendingInvite(null)
     setSelectedServer(invite.server)
     setScreen('home')
+    clearInvitePath()
   }
 
   async function handleJoinInvite(code) {
@@ -88,12 +120,40 @@ function App() {
     setScreen('home')
   }
 
+  async function handleDirectInviteJoin(invite, username) {
+    const user = await startUser(username)
+
+    setCurrentUser(user)
+    saveUser(user)
+    await joinInviteWithUser(invite, user)
+  }
+
+  function handleBackToLanding() {
+    setPendingInvite(null)
+    setDirectInviteCode('')
+    clearInvitePath()
+    setScreen('landing')
+  }
+
   function handleLogout() {
     setSelectedServer(null)
     setPendingInvite(null)
+    setDirectInviteCode('')
     setCurrentUser(null)
     clearStoredUser()
+    clearInvitePath()
     setScreen('landing')
+  }
+
+  if (screen === 'join-invite') {
+    return (
+      <JoinInvitePage
+        code={directInviteCode}
+        onBack={handleBackToLanding}
+        onJoin={handleDirectInviteJoin}
+        onLoadInvite={resolveInvite}
+      />
+    )
   }
 
   if (screen === 'landing') {
@@ -111,10 +171,15 @@ function App() {
       <SelectUser
         helperText={
           pendingInvite
-            ? `Selecciona un usuario para unirte al servidor ${pendingInvite.server.name}.`
+            ? (
+                <>
+                  Selecciona un usuario para unirte al servidor{' '}
+                  <strong>{pendingInvite.server.name}</strong>.
+                </>
+              )
             : undefined
         }
-        onBack={() => setScreen('landing')}
+        onBack={handleBackToLanding}
         onUserSelected={handleUserSelected}
       />
     )
