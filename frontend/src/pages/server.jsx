@@ -29,8 +29,6 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
   const [messageText, setMessageText] = useState('')
   const [error, setError] = useState('')
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
-  const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef(null)
   const [isSocketConnected, setIsSocketConnected] = useState(false)
   const socketRef = useRef(null)
@@ -70,14 +68,10 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
 
   useEffect(() => {
     if (!selectedChannelId) {
-      setMessages([])
       return
     }
 
     let isActive = true
-
-    setIsLoadingMessages(true)
-    setError('')
 
     getChannelMessages(selectedChannelId)
       .then((loadedMessages) => {
@@ -106,11 +100,6 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
         if (!isActive) return
 
         setError(currentError.message)
-      })
-      .finally(() => {
-        if (!isActive) return
-
-        setIsLoadingMessages(false)
       })
 
     return () => {
@@ -318,10 +307,6 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
               <div className="grid h-full place-items-center text-center text-slate-500">
                 <p>Selecciona un canal para conversar en este servidor.</p>
               </div>
-            ) : isLoadingMessages ? (
-              <div className="grid h-full place-items-center text-center text-slate-500">
-                <p>Cargando historial de #{selectedChannel.name}...</p>
-              </div>
             ) : messages.length === 0 ? (
               <div className="grid h-full place-items-center text-center text-slate-500">
                 <p>No hay mensajes todavia en #{selectedChannel.name}.</p>
@@ -381,7 +366,7 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
             <button
               type="submit"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-teal-700 px-5 font-bold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-4 focus:ring-teal-100 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={!selectedChannel || !messageText.trim() || isSending}
+              disabled={!selectedChannel || !messageText.trim()}
             >
               <Send size={18} aria-hidden="true" />
               Enviar

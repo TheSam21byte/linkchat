@@ -1,85 +1,188 @@
 import { useMemo, useState } from 'react'
 import ChatHome from './pages/chat-home'
+import JoinInvitePage from './pages/join-invite'
+import LandingPage from './pages/landing'
 import ServerPage from './pages/server'
 import SelectUser from './pages/select-user'
 import { joinInvitation } from './services/invitations-api'
+import {
+  getInvitationByCode,
+  getServerById,
+  joinInvitation,
+} from './services/chat-api'
+import { startUser } from './services/users-api'
+
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem('linkchat-current-user'))
+  } catch {
+    return null
+  }
+}
+
+function saveUser(user) {
+  localStorage.setItem('linkchat-current-user', JSON.stringify(user))
+}
+
+function clearStoredUser() {
+  localStorage.removeItem('linkchat-current-user')
+}
+
+function normalizeServer(server, role = 'member') {
+  return {
+    id: server._id ?? server.id,
+    name: server.name,
+    description: server.description,
+    role,
+  }
+}
+
+function getInviteCodeFromPath() {
+  const segments = window.location.pathname.split('/').filter(Boolean)
+
+  if (segments[0] === 'invite' && segments[1]) {
+    return decodeURIComponent(segments[1])
+  }
+
+  if (
+    segments[0] === 'api' &&
+    segments[1] === 'invitations' &&
+    segments[2] === 'join' &&
+    segments[3]
+  ) {
+    return decodeURIComponent(segments[3])
+  }
+
+  return ''
+}
+
+function clearInvitePath() {
+  if (window.location.pathname !== '/') {
+    window.history.replaceState({}, '', '/')
+  }
+}
 
 function App() {
-  const [currentUser, setCurrentUser] = useState(null)
+  const initialInviteCode = getInviteCodeFromPath()
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser())
   const [selectedServer, setSelectedServer] = useState(null)
-  const [error, setError] = useState('')
-  const [isJoiningInvitation, setIsJoiningInvitation] = useState(false)
+  const [pendingInvite, setPendingInvite] = useState(null)
+  const [directInviteCode, setDirectInviteCode] = useState(initialInviteCode)
+  const [screen, setScreen] = useState(
+    initialInviteCode ? 'join-invite' : 'landing',
+  )
 
-  const inviteCode = useMemo(() => {
-    const path = window.location.pathname
+  async function resolveInvite(code) {
+    const invitation = await getInvitationByCode(code)
+    const inviteServer = invitation.serverId
+    const server =
+      typeof inviteServer === 'object'
+        ? normalizeServer(inviteServer)
+        : normalizeServer(await getServerById(inviteServer))
 
-    if (!path.startsWith('/invite/')) {
-      return ''
+    return {
+      code,
+      invitation,
+      server,
     }
+  }
 
-    return decodeURIComponent(path.replace('/invite/', ''))
-  }, [])
+  async function joinInviteWithUser(invite, user) {
+    await joinInvitation({
+      code: invite.code,
+      username: user.username,
+    })
 
-  async function handleUserSelected(user) {
-    setCurrentUser(user)
+    setPendingInvite(null)
+    setSelectedServer(invite.server)
+    setScreen('home')
+    clearInvitePath()
+  }
 
-    if (!inviteCode) {
+  async function handleJoinInvite(code) {
+    const invite = await resolveInvite(code)
+
+    if (!currentUser) {
+      setPendingInvite(invite)
+      setScreen('select-user')
       return
     }
 
-    try {
-      setIsJoiningInvitation(true)
-      setError('')
+    await joinInviteWithUser(invite, currentUser)
+  }
 
-      const data = await joinInvitation(inviteCode, user.username)
-
-      if (data.server) {
-        setSelectedServer({
-          id: data.server._id ?? data.server.id,
-          name: data.server.name,
-          description: data.server.description,
-          role: data.member?.role ?? 'member',
-        })
-      }
-    } catch (currentError) {
-      setError(currentError.message)
-    } finally {
-      setIsJoiningInvitation(false)
+  async function handleUserSelected(user) {
+    if (pendingInvite) {
+      await joinInviteWithUser(pendingInvite, user)
     }
+
+    setCurrentUser(user)
+    saveUser(user)
+    setScreen('home')
   }
 
-  if (!currentUser) {
-    return <SelectUser onUserSelected={handleUserSelected} />
+  async function handleDirectInviteJoin(invite, username) {
+    const user = await startUser(username)
+
+    setCurrentUser(user)
+    saveUser(user)
+    await joinInviteWithUser(invite, user)
   }
 
-  if (isJoiningInvitation) {
+  function handleBackToLanding() {
+    setPendingInvite(null)
+    setDirectInviteCode('')
+    clearInvitePath()
+    setScreen('landing')
+  }
+
+  function handleLogout() {
+    setSelectedServer(null)
+    setPendingInvite(null)
+    setDirectInviteCode('')
+    setCurrentUser(null)
+    clearStoredUser()
+    clearInvitePath()
+    setScreen('landing')
+  }
+
+  if (screen === 'join-invite') {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-100 text-slate-950">
-        <div className="rounded-lg bg-white p-6 shadow">
-          Uniéndote al servidor de la invitación...
-        </div>
-      </main>
+      <JoinInvitePage
+        code={directInviteCode}
+        onBack={handleBackToLanding}
+        onJoin={handleDirectInviteJoin}
+        onLoadInvite={resolveInvite}
+      />
     )
   }
 
-  if (error) {
+  if (screen === 'landing') {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-100 text-slate-950">
-        <div className="max-w-md rounded-lg border border-red-200 bg-red-50 p-6 text-red-700 shadow">
-          <p className="font-bold">Error al usar la invitación</p>
-          <p className="mt-2">{error}</p>
-          <button
-            type="button"
-            className="mt-4 rounded-lg bg-red-700 px-4 py-2 font-bold text-white"
-            onClick={() => {
-              setError('')
-              window.history.replaceState(null, '', '/')
-            }}
-          >
-            Ir al inicio
-          </button>
-        </div>
-      </main>
+      <LandingPage
+        currentUser={currentUser}
+        onEnterApp={() => setScreen(currentUser ? 'home' : 'select-user')}
+        onJoinInvite={handleJoinInvite}
+      />
+    )
+  }
+
+  if (!currentUser || screen === 'select-user') {
+    return (
+      <SelectUser
+        helperText={
+          pendingInvite
+            ? (
+                <>
+                  Selecciona un usuario para unirte al servidor{' '}
+                  <strong>{pendingInvite.server.name}</strong>.
+                </>
+              )
+            : undefined
+        }
+        onBack={handleBackToLanding}
+        onUserSelected={handleUserSelected}
+      />
     )
   }
 
@@ -89,10 +192,7 @@ function App() {
         currentUser={currentUser}
         server={selectedServer}
         onBack={() => setSelectedServer(null)}
-        onLogout={() => {
-          setSelectedServer(null)
-          setCurrentUser(null)
-        }}
+        onLogout={handleLogout}
       />
     )
   }
@@ -100,7 +200,7 @@ function App() {
   return (
     <ChatHome
       currentUser={currentUser}
-      onLogout={() => setCurrentUser(null)}
+      onLogout={handleLogout}
       onServerSelected={setSelectedServer}
     />
   )

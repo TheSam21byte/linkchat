@@ -1,30 +1,36 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? ''
+import { request } from '../lib/api-client'
 
-async function request(path, options) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
+export async function createInvitation({ serverId, code }) {
+  const data = await request('/api/invitations', {
+    method: 'POST',
+    body: JSON.stringify({ serverId, code }),
   })
 
-  const data = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new Error(data?.message ?? 'No se pudo completar la solicitud')
+  return {
+    invitation: data.invitation,
+    inviteUrl: data.inviteUrl,
   }
+}
 
-  return data
+export async function getInvitations() {
+  const data = await request('/api/invitations')
+
+  return data.invitations ?? []
 }
 
 export async function getInvitationByCode(code) {
-  return request(`/api/invitations/${encodeURIComponent(code)}`)
+  return request(`/api/invitations/${code}`)
 }
 
-export async function joinInvitation(code, username) {
-  return request(`/api/invitations/join/${encodeURIComponent(code)}`, {
+export async function joinInvitation({ code, username }) {
+  return request(`/api/invitations/join/${code}`, {
     method: 'POST',
     body: JSON.stringify({ username }),
+  })
+}
+
+export async function disableInvitation(code) {
+  return request(`/api/invitations/${code}/disable`, {
+    method: 'PATCH',
   })
 }
