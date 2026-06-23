@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 
 import app from "./app.js";
 import { connectDB } from "./config/db.js";
+import { socketCorsOptions } from "./config/cors.js";
 import { configureChatSocket } from "./sockets/chat.socket.js";
 
 dotenv.config();
@@ -13,10 +14,7 @@ await connectDB();
 const httpServer = http.createServer(app);
 
 const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL,
-    methods: ["GET", "POST"]
-  }
+  cors: socketCorsOptions
 });
 
 configureChatSocket(io);

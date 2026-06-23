@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 
+import { corsOptions } from "./config/cors.js";
 import userRoutes from "./routes/user.routes.js";
 import serverRoutes from "./routes/server.routes.js";
 import channelRoutes from "./routes/channel.routes.js";
@@ -10,9 +11,7 @@ import messageRoutes from "./routes/message.routes.js";
 
 const app = express();
 
-app.use(cors({
-  origin: process.env.CLIENT_URL
-}));
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
