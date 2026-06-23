@@ -61,13 +61,45 @@ export const configureChatSocket = (io) => {
       socket.emit("users_list", users);
     });
 
-    socket.on("private_message", ({ toSocketId, fromUsername, message }) => {
-      io.to(toSocketId).emit("receive_private_message", {
-        usuario: fromUsername,
-        mensaje: message,
-        hora: new Date().toLocaleTimeString()
-      });
-    });
+    socket.on(
+      "private_message",
+      ({ toSocketId, toUsername, fromUsername, message, channelId }) => {
+        let targetSocketId = toSocketId;
+
+        if (!targetSocketId && toUsername) {
+          const normalizedUsername = toUsername.trim().toLowerCase();
+
+          for (const [socketId, userData] of connectedUsers.entries()) {
+            if (
+              userData.channelId === channelId &&
+              userData.username.toLowerCase() === normalizedUsername
+            ) {
+              targetSocketId = socketId;
+              break;
+            }
+          }
+        }
+
+        if (!targetSocketId) {
+          socket.emit("error_message", {
+            message: `No se encontró al usuario "${toUsername ?? "destino"}" en este canal`
+          });
+          return;
+        }
+
+        io.to(targetSocketId).emit("receive_private_message", {
+          usuario: fromUsername,
+          mensaje: message,
+          hora: new Date().toLocaleTimeString()
+        });
+
+        socket.emit("private_message_sent", {
+          usuario: toUsername ?? fromUsername,
+          mensaje: message,
+          hora: new Date().toLocaleTimeString()
+        });
+      }
+    );
 
     socket.on("disconnect", () => {
       const userData = connectedUsers.get(socket.id);

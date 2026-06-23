@@ -1,12 +1,22 @@
-import crypto from "crypto";
+import { customAlphabet } from "nanoid";
 import mongoose from "mongoose";
 import Invitation from "../models/Invitation.js";
 import Server from "../models/Server.js";
 import User from "../models/User.js";
 import Member from "../models/Member.js";
 
-const generateCode = () => {
-  return crypto.randomBytes(4).toString("hex");
+const generateCode = customAlphabet(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  6
+);
+
+const buildInviteUrl = (code) => {
+  const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(
+    /\/$/,
+    ""
+  );
+
+  return `${clientUrl}/invite/${code}`;
 };
 
 export const createInvitation = async (req, res) => {
@@ -44,7 +54,7 @@ export const createInvitation = async (req, res) => {
     res.status(201).json({
       message: "Invitación creada correctamente",
       invitation,
-      inviteUrl: `http://localhost:5173/invite/${invitation.code}`
+      inviteUrl: buildInviteUrl(invitation.code)
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -87,11 +97,29 @@ export const getInvitationByCode = async (req, res) => {
 
     if (!invitation) {
       return res.status(404).json({
+        valid: false,
         message: "Invitación no encontrada"
       });
     }
 
-    res.json(invitation);
+    if (!invitation.active) {
+      return res.status(410).json({
+        valid: false,
+        message: "La invitación ya no está activa"
+      });
+    }
+
+    res.json({
+      valid: true,
+      code: invitation.code,
+      active: invitation.active,
+      server: {
+        id: invitation.serverId._id,
+        name: invitation.serverId.name,
+        description: invitation.serverId.description
+      },
+      invitation
+    });
   } catch (error) {
     res.status(500).json({
       message: "Error al obtener invitación",
@@ -114,7 +142,7 @@ export const joinByInvitation = async (req, res) => {
     const invitation = await Invitation.findOne({
       code,
       active: true
-    });
+    }).populate("serverId", "name description");
 
     if (!invitation) {
       return res.status(404).json({
@@ -168,7 +196,13 @@ export const joinByInvitation = async (req, res) => {
       message: "Usuario unido al servidor correctamente",
       user: {
         id: user._id,
-        username: user.username
+        username: user.username,
+        status: user.status
+      },
+      server: {
+        id: invitation.serverId._id,
+        name: invitation.serverId.name,
+        description: invitation.serverId.description
       },
       member: {
         id: member._id,
