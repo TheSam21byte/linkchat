@@ -4,7 +4,6 @@ import JoinInvitePage from './pages/join-invite'
 import LandingPage from './pages/landing'
 import ServerPage from './pages/server'
 import SelectUser from './pages/select-user'
-import { joinInvitation } from './services/invitations-api'
 import {
   getInvitationByCode,
   getServerById,
