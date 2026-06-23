@@ -12,9 +12,9 @@ import {
 import {
   getChannelMessages,
   getServerChannels,
-  sendChannelMessage,
 } from '../services/chat-api'
-
+import { io } from 'socket.io-client'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:4000'
 function formatTime(date) {
   return new Intl.DateTimeFormat('es', {
     hour: '2-digit',
@@ -29,13 +29,17 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
   const [messageText, setMessageText] = useState('')
   const [error, setError] = useState('')
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef(null)
-
+  const [isSocketConnected, setIsSocketConnected] = useState(false)
+  const socketRef = useRef(null)
   const selectedChannel = useMemo(
     () => channels.find((channel) => channel.id === selectedChannelId),
     [channels, selectedChannelId],
   )
+
+
 
   useEffect(() => {
     let isActive = true
@@ -65,21 +69,48 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
   }, [server.id])
 
   useEffect(() => {
-    if (!selectedChannelId) return
+    if (!selectedChannelId) {
+      setMessages([])
+      return
+    }
 
     let isActive = true
+
+    setIsLoadingMessages(true)
+    setError('')
 
     getChannelMessages(selectedChannelId)
       .then((loadedMessages) => {
         if (!isActive) return
 
-        setMessages(loadedMessages)
-        setError('')
+        setMessages((currentMessages) => {
+          const historyMessages = loadedMessages ?? []
+
+          const historyIds = new Set(
+            historyMessages.map((message) => message._id ?? message.id),
+          )
+
+          const liveMessagesNotInHistory = currentMessages.filter((message) => {
+            const messageId = message._id ?? message.id
+
+            return (
+              String(message.channelId) === String(selectedChannelId) &&
+              !historyIds.has(messageId)
+            )
+          })
+
+          return [...historyMessages, ...liveMessagesNotInHistory]
+        })
       })
       .catch((currentError) => {
         if (!isActive) return
 
         setError(currentError.message)
+      })
+      .finally(() => {
+        if (!isActive) return
+
+        setIsLoadingMessages(false)
       })
 
     return () => {
@@ -88,31 +119,93 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
   }, [selectedChannelId])
 
   useEffect(() => {
+    if (!selectedChannelId || !currentUser?.username) return
+
+    const socket = io(SOCKET_URL)
+
+    socketRef.current = socket
+
+    socket.on('connect', () => {
+      setIsSocketConnected(true)
+
+      socket.emit('join_channel', {
+        username: currentUser.username,
+        channelId: selectedChannelId,
+      })
+    })
+
+    socket.on('receive_message', (data) => {
+      if (String(data.channelId) !== String(selectedChannelId)) return
+
+      const newMessage = {
+        _id: data.id ?? data._id ?? `${Date.now()}`,
+        username: data.username ?? data.usuario,
+        content: data.content ?? data.mensaje,
+        channelId: data.channelId,
+        createdAt: data.createdAt ?? new Date().toISOString(),
+        type: data.type ?? 'public',
+      }
+
+      setMessages((currentMessages) => {
+        const alreadyExists = currentMessages.some(
+          (message) => (message._id ?? message.id) === newMessage._id,
+        )
+
+        if (alreadyExists) return currentMessages
+
+        return [...currentMessages, newMessage]
+      })
+    })
+
+    socket.on('system_message', (data) => {
+      const systemMessage = {
+        _id: `system-${Date.now()}`,
+        username: data.usuario ?? 'Sistema',
+        content: data.mensaje,
+        channelId: data.channelId ?? selectedChannelId,
+        createdAt: new Date().toISOString(),
+        type: 'system',
+      }
+
+      setMessages((currentMessages) => [...currentMessages, systemMessage])
+    })
+
+    socket.on('error_message', (data) => {
+      setError(data.message ?? 'Error en la conexión del socket')
+    })
+
+    socket.on('disconnect', () => {
+      setIsSocketConnected(false)
+    })
+
+    return () => {
+      socket.disconnect()
+      socketRef.current = null
+      setIsSocketConnected(false)
+    }
+  }, [selectedChannelId, currentUser?.username])
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [messages, selectedChannelId])
 
-  async function handleSendMessage(event) {
+  function handleSendMessage(event) {
     event.preventDefault()
 
     if (!selectedChannel || !messageText.trim()) return
 
-    try {
-      setIsSending(true)
-      setError('')
-
-      const newMessage = await sendChannelMessage({
-        channelId: selectedChannel.id,
-        username: currentUser.username,
-        content: messageText,
-      })
-
-      setMessages((currentMessages) => [...currentMessages, newMessage])
-      setMessageText('')
-    } catch (currentError) {
-      setError(currentError.message)
-    } finally {
-      setIsSending(false)
+    if (!socketRef.current || !isSocketConnected) {
+      setError('No hay conexión activa con el socket')
+      return
     }
+
+    socketRef.current.emit('send_message', {
+      username: currentUser.username,
+      channelId: selectedChannel.id,
+      message: messageText.trim(),
+    })
+
+    setMessageText('')
   }
 
   return (
@@ -181,11 +274,10 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
                   <button
                     type="button"
                     key={channel.id}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left transition ${
-                      isSelected
-                        ? 'bg-teal-600 text-white'
-                        : 'text-white/75 hover:bg-white/10 hover:text-white'
-                    }`}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left transition ${isSelected
+                      ? 'bg-teal-600 text-white'
+                      : 'text-white/75 hover:bg-white/10 hover:text-white'
+                      }`}
                     onClick={() => setSelectedChannelId(channel.id)}
                   >
                     <Hash size={17} aria-hidden="true" />
@@ -202,6 +294,9 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
             <div>
               <p className="text-xs font-bold uppercase tracking-normal text-teal-700">
                 Canal
+              </p>
+              <p className="text-sm text-slate-500">
+                {isSocketConnected ? 'Conectado en tiempo real' : 'Sin conexión en tiempo real'}
               </p>
               <h2 className="flex items-center gap-2 text-xl font-semibold">
                 <Hash size={20} aria-hidden="true" />
@@ -223,6 +318,10 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
               <div className="grid h-full place-items-center text-center text-slate-500">
                 <p>Selecciona un canal para conversar en este servidor.</p>
               </div>
+            ) : isLoadingMessages ? (
+              <div className="grid h-full place-items-center text-center text-slate-500">
+                <p>Cargando historial de #{selectedChannel.name}...</p>
+              </div>
             ) : messages.length === 0 ? (
               <div className="grid h-full place-items-center text-center text-slate-500">
                 <p>No hay mensajes todavia en #{selectedChannel.name}.</p>
@@ -235,24 +334,21 @@ function ServerPage({ currentUser, server, onBack, onLogout }) {
                   return (
                     <article
                       key={message._id ?? message.id}
-                      className={`max-w-[75%] rounded-lg px-4 py-3 shadow-sm ${
-                        isMine
-                          ? 'ml-auto bg-teal-700 text-white'
-                          : 'mr-auto bg-white text-slate-900'
-                      }`}
+                      className={`max-w-[75%] rounded-lg px-4 py-3 shadow-sm ${isMine
+                        ? 'ml-auto bg-teal-700 text-white'
+                        : 'mr-auto bg-white text-slate-900'
+                        }`}
                     >
                       <div className="mb-1 flex items-center justify-between gap-3">
                         <strong
-                          className={`text-sm ${
-                            isMine ? 'text-teal-50' : 'text-teal-700'
-                          }`}
+                          className={`text-sm ${isMine ? 'text-teal-50' : 'text-teal-700'
+                            }`}
                         >
                           {message.username}
                         </strong>
                         <time
-                          className={`text-xs ${
-                            isMine ? 'text-teal-50' : 'text-slate-400'
-                          }`}
+                          className={`text-xs ${isMine ? 'text-teal-50' : 'text-slate-400'
+                            }`}
                         >
                           {formatTime(message.createdAt)}
                         </time>
