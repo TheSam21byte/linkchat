@@ -8,6 +8,7 @@ import channelRoutes from "./routes/channel.routes.js";
 import invitationRoutes from "./routes/invitation.routes.js";
 import memberRoutes from "./routes/member.routes.js";
 import messageRoutes from "./routes/message.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
 
@@ -29,5 +30,6 @@ app.use("/api/channels", channelRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/members", memberRoutes);
 app.use("/api/messages", messageRoutes);
-
+app.use("/uploads", express.static("uploads"));
+app.use("/api/auth", authRoutes);
 export default app;

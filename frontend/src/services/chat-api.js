@@ -27,6 +27,8 @@ export async function getContacts(currentUserId) {
     .map((user) => ({
       id: user._id ?? user.id,
       username: user.username,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
       status: user.status,
     }))
     .filter((user) => user.id !== currentUserId)

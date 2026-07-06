@@ -1,14 +1,18 @@
 import { useState } from 'react'
+import AuthPage from './pages/auth'
+import ChatHome from './pages/chat-home'
 import JoinInvitePage from './pages/join-invite'
 import LandingPage from './pages/landing'
 import ServerPage from './pages/server'
-import SelectUser from './pages/select-user'
+import {
+  clearAuthToken,
+  saveAuthToken,
+} from './lib/api-client'
 import {
   getInvitationByCode,
-  getServerById,
   joinInvitation,
-} from './services/chat-api'
-import { startUser } from './services/users-api'
+} from './services/invitations-api'
+import { getServerById } from './services/servers-api'
 
 function getStoredUser() {
   try {
@@ -24,6 +28,17 @@ function saveUser(user) {
 
 function clearStoredUser() {
   localStorage.removeItem('linkchat-current-user')
+}
+
+function normalizeUser(user) {
+  return {
+    id: user._id ?? user.id,
+    email: user.email,
+    name: user.name,
+    username: user.username ?? user.name,
+    avatarUrl: user.avatarUrl ?? null,
+    status: user.status,
+  }
 }
 
 function normalizeServer(server, role = 'member') {
@@ -42,15 +57,6 @@ function getInviteCodeFromPath() {
     return decodeURIComponent(segments[1])
   }
 
-  if (
-    segments[0] === 'api' &&
-    segments[1] === 'invitations' &&
-    segments[2] === 'join' &&
-    segments[3]
-  ) {
-    return decodeURIComponent(segments[3])
-  }
-
   return ''
 }
 
@@ -62,17 +68,26 @@ function clearInvitePath() {
 
 function App() {
   const initialInviteCode = getInviteCodeFromPath()
-  const [currentUser, setCurrentUser] = useState(() => getStoredUser())
+  const storedUser = getStoredUser()
+
+  const [currentUser, setCurrentUser] = useState(storedUser)
   const [selectedServer, setSelectedServer] = useState(null)
   const [pendingInvite, setPendingInvite] = useState(null)
   const [directInviteCode, setDirectInviteCode] = useState(initialInviteCode)
   const [screen, setScreen] = useState(
-    initialInviteCode ? 'join-invite' : 'landing',
+    initialInviteCode ? 'join-invite' : storedUser ? 'home' : 'landing',
   )
 
   async function resolveInvite(code) {
-    const invitation = await getInvitationByCode(code)
-    const inviteServer = invitation.serverId
+    const data = await getInvitationByCode(code)
+    const invitation = data.invitation ?? data
+
+    const inviteServer = invitation.serverId ?? invitation.server
+
+    if (!inviteServer) {
+      throw new Error('La invitación no tiene un servidor asociado.')
+    }
+
     const server =
       typeof inviteServer === 'object'
         ? normalizeServer(inviteServer)
@@ -85,14 +100,16 @@ function App() {
     }
   }
 
-  async function joinInviteWithUser(invite, user) {
-    await joinInvitation({
-      code: invite.code,
-      username: user.username,
-    })
+  async function joinInviteWithCurrentSession(invite) {
+    const data = await joinInvitation(invite.code)
+
+    const joinedServer = data.server
+      ? normalizeServer(data.server, data.member?.role ?? 'member')
+      : invite.server
 
     setPendingInvite(null)
-    setSelectedServer(invite.server)
+    setSelectedServer(joinedServer)
+    setDirectInviteCode('')
     setScreen('home')
     clearInvitePath()
   }
@@ -102,33 +119,41 @@ function App() {
 
     if (!currentUser) {
       setPendingInvite(invite)
-      setScreen('select-user')
+      setScreen('auth')
       return
     }
 
-    await joinInviteWithUser(invite, currentUser)
+    await joinInviteWithCurrentSession(invite)
   }
 
-  async function handleUserSelected(user) {
-    if (pendingInvite) {
-      await joinInviteWithUser(pendingInvite, user)
+  async function handleInviteContinue(invite) {
+    if (!currentUser) {
+      setPendingInvite(invite)
+      setScreen('auth')
+      return
     }
 
-    setCurrentUser(user)
-    saveUser(user)
-    setScreen('home')
+    await joinInviteWithCurrentSession(invite)
   }
 
-  async function handleDirectInviteJoin(invite, username) {
-    const user = await startUser(username)
+  async function handleAuthenticated(user, token) {
+    const normalizedUser = normalizeUser(user)
 
-    setCurrentUser(user)
-    saveUser(user)
-    await joinInviteWithUser(invite, user)
+    saveAuthToken(token)
+    saveUser(normalizedUser)
+    setCurrentUser(normalizedUser)
+
+    if (pendingInvite) {
+      await joinInviteWithCurrentSession(pendingInvite)
+      return
+    }
+
+    setScreen('home')
   }
 
   function handleBackToLanding() {
     setPendingInvite(null)
+    setSelectedServer(null)
     setDirectInviteCode('')
     clearInvitePath()
     setScreen('landing')
@@ -140,6 +165,7 @@ function App() {
     setDirectInviteCode('')
     setCurrentUser(null)
     clearStoredUser()
+    clearAuthToken()
     clearInvitePath()
     setScreen('landing')
   }
@@ -148,9 +174,24 @@ function App() {
     return (
       <JoinInvitePage
         code={directInviteCode}
+        currentUser={currentUser}
         onBack={handleBackToLanding}
-        onJoin={handleDirectInviteJoin}
+        onContinue={handleInviteContinue}
         onLoadInvite={resolveInvite}
+      />
+    )
+  }
+
+  if (screen === 'auth') {
+    return (
+      <AuthPage
+        helperText={
+          pendingInvite
+            ? `Inicia sesión o crea una cuenta para unirte al servidor ${pendingInvite.server.name}.`
+            : undefined
+        }
+        onBack={handleBackToLanding}
+        onAuthenticated={handleAuthenticated}
       />
     )
   }
@@ -160,25 +201,8 @@ function App() {
       <LandingPage
         currentUser={currentUser}
         onJoinInvite={handleJoinInvite}
-      />
-    )
-  }
-
-  if (!currentUser || screen === 'select-user') {
-    return (
-      <SelectUser
-        helperText={
-          pendingInvite
-            ? (
-                <>
-                  Selecciona un usuario para unirte al servidor{' '}
-                  <strong>{pendingInvite.server.name}</strong>.
-                </>
-              )
-            : undefined
-        }
-        onBack={handleBackToLanding}
-        onUserSelected={handleUserSelected}
+        onLogin={() => setScreen('auth')}
+        onEnterApp={() => setScreen(currentUser ? 'home' : 'auth')}
       />
     )
   }
@@ -194,7 +218,22 @@ function App() {
     )
   }
 
-  return <LandingPage currentUser={currentUser} onJoinInvite={handleJoinInvite} />
+  if (!currentUser) {
+    return (
+      <AuthPage
+        onBack={handleBackToLanding}
+        onAuthenticated={handleAuthenticated}
+      />
+    )
+  }
+
+  return (
+    <ChatHome
+      currentUser={currentUser}
+      onLogout={handleLogout}
+      onServerSelected={setSelectedServer}
+    />
+  )
 }
 
 export default App

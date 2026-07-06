@@ -5,14 +5,12 @@ import {
   Hash,
   LoaderCircle,
   MessageCircle,
-  UserRound,
 } from 'lucide-react'
 import AppLogo from '../components/app-logo'
 import heroImage from '../assets/hero.png'
 
-function JoinInvitePage({ code, onBack, onJoin, onLoadInvite }) {
+function JoinInvitePage({ code, currentUser, onBack, onContinue, onLoadInvite }) {
   const [invite, setInvite] = useState(null)
-  const [username, setUsername] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isJoining, setIsJoining] = useState(false)
@@ -43,20 +41,13 @@ function JoinInvitePage({ code, onBack, onJoin, onLoadInvite }) {
     }
   }, [code, onLoadInvite])
 
-  async function handleJoin(event) {
-    event.preventDefault()
-
-    const cleanUsername = username.trim()
-
-    if (cleanUsername.length < 3) {
-      setError('El nombre de usuario debe tener al menos 3 caracteres')
-      return
-    }
+  async function handleContinue() {
+    if (!invite) return
 
     try {
       setIsJoining(true)
       setError('')
-      await onJoin(invite, cleanUsername)
+      await onContinue(invite)
     } catch (currentError) {
       setError(currentError.message)
     } finally {
@@ -85,21 +76,19 @@ function JoinInvitePage({ code, onBack, onJoin, onLoadInvite }) {
           />
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-teal-100 backdrop-blur">
             <Hash size={16} aria-hidden="true" />
-            Invitacion LinkChat
+            Invitación LinkChat
           </div>
           <h1 className="text-4xl font-bold leading-tight max-sm:text-3xl">
-            Te estas uniendo a <span className="text-teal-200">{serverName}</span>
+            Te estás uniendo a{' '}
+            <span className="text-teal-200">{serverName}</span>
           </h1>
           <p className="mt-4 max-w-xl text-lg leading-8 text-slate-200">
-            Ingresa tu nombre de usuario para entrar. Si ya existe, LinkChat
-            usara tu cuenta; si no existe, la creara automaticamente.
+            Para entrar a este servidor necesitas iniciar sesión o crear una
+            cuenta en LinkChat.
           </p>
         </div>
 
-        <form
-          className="rounded-lg border border-white/15 bg-white/95 p-6 text-slate-950 shadow-2xl shadow-black/30"
-          onSubmit={handleJoin}
-        >
+        <div className="rounded-lg border border-white/15 bg-white/95 p-6 text-slate-950 shadow-2xl shadow-black/30">
           <div className="mb-5">
             <div className="mb-4 grid size-12 place-items-center rounded-lg bg-white shadow-lg shadow-teal-950/20">
               {isLoading ? (
@@ -109,11 +98,20 @@ function JoinInvitePage({ code, onBack, onJoin, onLoadInvite }) {
               )}
             </div>
             <p className="text-sm font-bold uppercase tracking-normal text-teal-700">
-              Acceso por invitacion
+              Acceso por invitación
             </p>
             <h2 className="mt-2 text-2xl font-semibold">
-              {isLoading ? 'Validando invitacion' : `Entrar a ${serverName}`}
+              {isLoading ? 'Validando invitación' : `Entrar a ${serverName}`}
             </h2>
+            {currentUser ? (
+              <p className="mt-3 rounded-lg bg-teal-50 p-3 text-sm font-semibold text-teal-800">
+                Sesión activa: entrarás como {currentUser.username}.
+              </p>
+            ) : (
+              <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+                No has iniciado sesión. Primero ingresa o crea una cuenta.
+              </p>
+            )}
           </div>
 
           {error ? (
@@ -123,38 +121,18 @@ function JoinInvitePage({ code, onBack, onJoin, onLoadInvite }) {
             </div>
           ) : null}
 
-          <label className="grid gap-2 text-sm font-semibold text-slate-700">
-            Username
-            <span className="relative">
-              <UserRound
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                size={19}
-                aria-hidden="true"
-              />
-              <input
-                className="min-h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-base font-normal outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
-                type="text"
-                placeholder="Ej: samuel"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                autoComplete="username"
-                autoFocus
-                disabled={isLoading}
-              />
-            </span>
-          </label>
-
           <button
-            type="submit"
+            type="button"
             className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 font-bold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-4 focus:ring-teal-100 disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={!invite || username.trim().length < 3 || isJoining}
+            disabled={!invite || isLoading || isJoining}
+            onClick={handleContinue}
           >
             {isJoining ? (
               <LoaderCircle className="animate-spin" size={20} />
             ) : (
               <MessageCircle size={20} aria-hidden="true" />
             )}
-            Unirme al servidor
+            {currentUser ? 'Unirme al servidor' : 'Iniciar sesión para unirme'}
             <ArrowRight size={18} aria-hidden="true" />
           </button>
 
@@ -163,9 +141,9 @@ function JoinInvitePage({ code, onBack, onJoin, onLoadInvite }) {
             className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 font-semibold text-slate-700 transition hover:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-100"
             onClick={onBack}
           >
-            Volver a la presentacion
+            Volver
           </button>
-        </form>
+        </div>
       </section>
     </main>
   )
