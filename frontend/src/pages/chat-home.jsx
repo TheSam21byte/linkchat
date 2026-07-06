@@ -15,7 +15,7 @@ import {
   getUserServers,
   sendDirectMessage,
 } from '../services/chat-api'
-
+import UserAvatar from '../components/user-avatar'
 const statusLabels = {
   online: 'En linea',
   offline: 'Desconectado',
@@ -181,9 +181,7 @@ function ChatHome({ currentUser, onLogout, onServerSelected }) {
               Sesion activa
             </p>
             <div className="mt-3 flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-full bg-slate-900 font-bold text-white">
-                {getInitials(currentUser.username)}
-              </span>
+              <UserAvatar user={currentUser} className="size-11" />
               <div className="min-w-0">
                 <h1 className="truncate text-lg font-semibold">
                   {currentUser.username}
@@ -247,18 +245,13 @@ function ChatHome({ currentUser, onLogout, onServerSelected }) {
                   <button
                     type="button"
                     key={contact.id}
-                    className={`flex items-center gap-3 rounded-lg border p-3 text-left transition hover:border-teal-300 ${
-                      isSelected
-                        ? 'border-teal-600 bg-teal-50'
-                        : 'border-slate-200 bg-white'
-                    }`}
+                    className={`flex items-center gap-3 rounded-lg border p-3 text-left transition hover:border-teal-300 ${isSelected
+                      ? 'border-teal-600 bg-teal-50'
+                      : 'border-slate-200 bg-white'
+                      }`}
                     onClick={() => setSelectedContactId(contact.id)}
                   >
-                    <span className="grid size-10 place-items-center rounded-full bg-slate-900 text-sm font-bold text-white">
-                      {getInitials(contact.username) || (
-                        <UserRound size={18} aria-hidden="true" />
-                      )}
-                    </span>
+                    <UserAvatar user={contact} className="size-10" textClassName="text-sm" />
                     <span className="min-w-0">
                       <strong className="block truncate">
                         {contact.username}
@@ -313,17 +306,15 @@ function ChatHome({ currentUser, onLogout, onServerSelected }) {
                   return (
                     <article
                       key={message._id ?? message.id}
-                      className={`max-w-[75%] rounded-lg px-4 py-3 shadow-sm ${
-                        isMine
-                          ? 'ml-auto bg-teal-700 text-white'
-                          : 'mr-auto bg-white text-slate-900'
-                      }`}
+                      className={`max-w-[75%] rounded-lg px-4 py-3 shadow-sm ${isMine
+                        ? 'ml-auto bg-teal-700 text-white'
+                        : 'mr-auto bg-white text-slate-900'
+                        }`}
                     >
                       <p className="break-words">{message.content}</p>
                       <time
-                        className={`mt-2 block text-xs ${
-                          isMine ? 'text-teal-50' : 'text-slate-400'
-                        }`}
+                        className={`mt-2 block text-xs ${isMine ? 'text-teal-50' : 'text-slate-400'
+                          }`}
                       >
                         {formatTime(message.createdAt)}
                       </time>

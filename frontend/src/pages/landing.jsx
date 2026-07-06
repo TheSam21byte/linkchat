@@ -8,11 +8,13 @@ import {
 } from 'lucide-react'
 import AppLogo from '../components/app-logo'
 import heroImage from '../assets/hero.png'
+import UserAvatar from '../components/user-avatar'
 
-function LandingPage({ currentUser, onJoinInvite }) {
+function LandingPage({ currentUser, onJoinInvite, onLogin, onEnterApp }) {
   const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
   const [isJoining, setIsJoining] = useState(false)
+
 
   async function handleJoinInvite(event) {
     event.preventDefault()
@@ -134,6 +136,23 @@ function LandingPage({ currentUser, onJoinInvite }) {
               {isJoining ? 'Validando...' : 'Ingresar con codigo'}
               <ArrowRight size={18} aria-hidden="true" />
             </button>
+            <button
+              type="button"
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700 focus:outline-none focus:ring-4 focus:ring-teal-100"
+              onClick={onEnterApp}
+            >
+              {currentUser ? 'Entrar a mi cuenta' : 'Iniciar sesión'}
+            </button>
+
+            {!currentUser ? (
+              <button
+                type="button"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700 focus:outline-none focus:ring-4 focus:ring-teal-100"
+                onClick={onLogin}
+              >
+                Crear cuenta
+              </button>
+            ) : null}
           </form>
         </div>
       </section>

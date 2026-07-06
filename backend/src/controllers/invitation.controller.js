@@ -102,72 +102,52 @@ export const getInvitationByCode = async (req, res) => {
 
 export const joinByInvitation = async (req, res) => {
   try {
-    const { code } = req.params
-    const { username } = req.body
-
-    if (!username) {
-      return res.status(400).json({
-        message: 'El username es obligatorio',
-      })
-    }
+    const { code } = req.params;
+    const user = req.user;
 
     const invitation = await Invitation.findOne({
       code,
-      active: true,
-    }).populate('serverId')
+      active: true
+    }).populate("serverId");
 
     if (!invitation) {
       return res.status(404).json({
-        message: 'Invitación no encontrada o inactiva',
-      })
+        message: "Invitación no encontrada o inactiva"
+      });
     }
-
-    const user = await User.findOneAndUpdate(
-      { username: username.trim() },
-      {
-        username: username.trim(),
-        status: 'online',
-        lastSeen: null,
-      },
-      {
-        upsert: true,
-        returnDocument: 'after',
-        runValidators: true,
-      },
-    )
 
     const member = await Member.findOneAndUpdate(
       {
         userId: user._id,
-        serverId: invitation.serverId._id,
+        serverId: invitation.serverId._id
       },
       {
         userId: user._id,
         serverId: invitation.serverId._id,
-        role: 'member',
+        role: "member",
         active: true,
-        joinedAt: new Date(),
+        joinedAt: new Date()
       },
       {
         upsert: true,
-        returnDocument: 'after',
-        runValidators: true,
-      },
-    )
+        returnDocument: "after",
+        runValidators: true
+      }
+    );
 
     return res.status(200).json({
-      message: 'Usuario unido al servidor correctamente',
+      message: "Usuario unido al servidor correctamente",
       user,
       server: invitation.serverId,
-      member,
-    })
+      member
+    });
   } catch (error) {
     return res.status(500).json({
-      message: 'Error al unirse mediante invitación',
-      error: error.message,
-    })
+      message: "Error al unirse mediante invitación",
+      error: error.message
+    });
   }
-}
+};
 
 export const disableInvitation = async (req, res) => {
   try {

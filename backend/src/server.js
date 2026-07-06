@@ -24,3 +24,5 @@ const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
   console.log(`🚀 Servidor LinkChat ejecutándose en puerto ${PORT}`);
 });
+
+console.log('JWT_SECRET cargado:', Boolean(process.env.JWT_SECRET))
