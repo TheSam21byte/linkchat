@@ -1,9 +1,10 @@
 import { request } from '../lib/api-client'
 
-export async function registerUser({ name, email, password, avatar }) {
+export async function registerUser({ name, username, email, password, avatar }) {
   const formData = new FormData()
 
   formData.append('name', name)
+  formData.append('username', username)
   formData.append('email', email)
   formData.append('password', password)
 

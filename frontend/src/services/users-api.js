@@ -1,22 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? ''
-
-async function request(path, options) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  })
-
-  const data = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new Error(data?.message ?? 'No se pudo completar la solicitud')
-  }
-
-  return data
-}
+import { request } from '../lib/api-client'
 
 export async function getUsers() {
   const data = await request('/api/users')
@@ -28,6 +10,25 @@ export async function startUser(username) {
   const data = await request('/api/users/start', {
     method: 'POST',
     body: JSON.stringify({ username }),
+  })
+
+  return data.user
+}
+
+export async function updateCurrentUser({ name, username, email, avatar }) {
+  const formData = new FormData()
+
+  formData.append('name', name)
+  formData.append('username', username)
+  formData.append('email', email)
+
+  if (avatar) {
+    formData.append('avatar', avatar)
+  }
+
+  const data = await request('/api/users/me', {
+    method: 'PATCH',
+    body: formData,
   })
 
   return data.user

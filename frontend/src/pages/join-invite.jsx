@@ -7,6 +7,7 @@ import {
   MessageCircle,
 } from 'lucide-react'
 import AppLogo from '../components/app-logo'
+import ThemeToggle from '../components/theme-toggle'
 import heroImage from '../assets/hero.png'
 
 function JoinInvitePage({ code, currentUser, onBack, onContinue, onLoadInvite }) {
@@ -59,6 +60,7 @@ function JoinInvitePage({ code, currentUser, onBack, onContinue, onLoadInvite })
 
   return (
     <main className="relative grid min-h-screen place-items-center overflow-hidden bg-slate-950 px-5 py-8 text-white">
+      <ThemeToggle className="absolute right-5 top-5 z-20" />
       <img
         src={heroImage}
         alt=""
@@ -88,7 +90,7 @@ function JoinInvitePage({ code, currentUser, onBack, onContinue, onLoadInvite })
           </p>
         </div>
 
-        <div className="rounded-lg border border-white/15 bg-white/95 p-6 text-slate-950 shadow-2xl shadow-black/30">
+        <div className="rounded-lg border border-white/15 bg-white/95 p-6 text-slate-950 shadow-2xl shadow-black/30 dark:bg-slate-900 dark:text-white">
           <div className="mb-5">
             <div className="mb-4 grid size-12 place-items-center rounded-lg bg-white shadow-lg shadow-teal-950/20">
               {isLoading ? (

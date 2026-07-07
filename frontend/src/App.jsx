@@ -1,13 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import AppHome from './pages/app-home'
 import AuthPage from './pages/auth'
-import ChatHome from './pages/chat-home'
 import JoinInvitePage from './pages/join-invite'
 import LandingPage from './pages/landing'
+import ProfilePage from './pages/profile'
 import ServerPage from './pages/server'
-import {
-  clearAuthToken,
-  saveAuthToken,
-} from './lib/api-client'
+import { clearAuthToken, saveAuthToken } from './lib/api-client'
 import {
   getInvitationByCode,
   joinInvitation,
@@ -35,7 +33,7 @@ function normalizeUser(user) {
     id: user._id ?? user.id,
     email: user.email,
     name: user.name,
-    username: user.username ?? user.name,
+    username: user.username,
     avatarUrl: user.avatarUrl ?? null,
     status: user.status,
   }
@@ -50,38 +48,81 @@ function normalizeServer(server, role = 'member') {
   }
 }
 
-function getInviteCodeFromPath() {
-  const segments = window.location.pathname.split('/').filter(Boolean)
+function getRoute(pathname = window.location.pathname) {
+  const segments = pathname.split('/').filter(Boolean)
 
   if (segments[0] === 'invite' && segments[1]) {
-    return decodeURIComponent(segments[1])
+    return { screen: 'join-invite', inviteCode: decodeURIComponent(segments[1]) }
   }
 
-  return ''
-}
+  if (pathname === '/register') return { screen: 'register' }
+  if (pathname === '/login') return { screen: 'login' }
+  if (pathname === '/app/profile') return { screen: 'profile' }
+  if (pathname === '/app') return { screen: 'home' }
 
-function clearInvitePath() {
-  if (window.location.pathname !== '/') {
-    window.history.replaceState({}, '', '/')
-  }
+  return { screen: 'landing' }
 }
 
 function App() {
-  const initialInviteCode = getInviteCodeFromPath()
-  const storedUser = getStoredUser()
-
-  const [currentUser, setCurrentUser] = useState(storedUser)
+  const [currentUser, setCurrentUser] = useState(getStoredUser)
   const [selectedServer, setSelectedServer] = useState(null)
+  const [userServers, setUserServers] = useState([])
   const [pendingInvite, setPendingInvite] = useState(null)
-  const [directInviteCode, setDirectInviteCode] = useState(initialInviteCode)
-  const [screen, setScreen] = useState(
-    initialInviteCode ? 'join-invite' : storedUser ? 'home' : 'landing',
-  )
+  const [authNotice, setAuthNotice] = useState('')
+  const [route, setRoute] = useState(() => {
+    const initialRoute = getRoute()
 
-  async function resolveInvite(code) {
+    if (['home', 'profile'].includes(initialRoute.screen) && !currentUser) {
+      window.history.replaceState({}, '', '/login')
+      return { screen: 'login' }
+    }
+
+    return initialRoute
+  })
+
+  const navigate = useCallback((path, { replace = false } = {}) => {
+    if (replace) {
+      window.history.replaceState({}, '', path)
+    } else {
+      window.history.pushState({}, '', path)
+    }
+
+    setRoute(getRoute(path))
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [])
+
+  const handleServersLoaded = useCallback((servers) => {
+    setUserServers(servers)
+  }, [])
+
+  const handleServerJoined = useCallback((server) => {
+    setUserServers((currentServers) => {
+      const alreadyExists = currentServers.some((currentServer) => currentServer.id === server.id)
+      return alreadyExists ? currentServers : [...currentServers, server]
+    })
+    setSelectedServer(server)
+  }, [])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const nextRoute = getRoute()
+
+      if (['home', 'profile'].includes(nextRoute.screen) && !currentUser) {
+        window.history.replaceState({}, '', '/login')
+        setRoute({ screen: 'login' })
+        return
+      }
+
+      setRoute(nextRoute)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [currentUser])
+
+  const resolveInvite = useCallback(async (code) => {
     const data = await getInvitationByCode(code)
     const invitation = data.invitation ?? data
-
     const inviteServer = invitation.serverId ?? invitation.server
 
     if (!inviteServer) {
@@ -93,43 +134,28 @@ function App() {
         ? normalizeServer(inviteServer)
         : normalizeServer(await getServerById(inviteServer))
 
-    return {
-      code,
-      invitation,
-      server,
-    }
-  }
+    return { code, invitation, server }
+  }, [])
 
   async function joinInviteWithCurrentSession(invite) {
     const data = await joinInvitation(invite.code)
-
     const joinedServer = data.server
       ? normalizeServer(data.server, data.member?.role ?? 'member')
       : invite.server
 
     setPendingInvite(null)
-    setSelectedServer(joinedServer)
-    setDirectInviteCode('')
-    setScreen('home')
-    clearInvitePath()
+    handleServerJoined(joinedServer)
+    navigate('/app', { replace: true })
   }
 
-  async function handleJoinInvite(code) {
-    const invite = await resolveInvite(code)
-
-    if (!currentUser) {
-      setPendingInvite(invite)
-      setScreen('auth')
-      return
-    }
-
-    await joinInviteWithCurrentSession(invite)
+  function handleJoinInvite(code) {
+    navigate(`/invite/${encodeURIComponent(code.trim())}`)
   }
 
   async function handleInviteContinue(invite) {
     if (!currentUser) {
       setPendingInvite(invite)
-      setScreen('auth')
+      navigate('/login')
       return
     }
 
@@ -142,38 +168,58 @@ function App() {
     saveAuthToken(token)
     saveUser(normalizedUser)
     setCurrentUser(normalizedUser)
+    setAuthNotice('')
 
     if (pendingInvite) {
       await joinInviteWithCurrentSession(pendingInvite)
       return
     }
 
-    setScreen('home')
+    navigate('/app', { replace: true })
+  }
+
+  function handleRegistered() {
+    setAuthNotice('Tu cuenta fue creada. Ahora inicia sesión para continuar.')
+    navigate('/login', { replace: true })
+  }
+
+  function handleAuthBack() {
+    if (pendingInvite) {
+      navigate(`/invite/${encodeURIComponent(pendingInvite.code)}`)
+      return
+    }
+
+    navigate('/')
   }
 
   function handleBackToLanding() {
     setPendingInvite(null)
     setSelectedServer(null)
-    setDirectInviteCode('')
-    clearInvitePath()
-    setScreen('landing')
+    setUserServers([])
+    navigate('/')
   }
 
   function handleLogout() {
     setSelectedServer(null)
+    setUserServers([])
     setPendingInvite(null)
-    setDirectInviteCode('')
     setCurrentUser(null)
     clearStoredUser()
     clearAuthToken()
-    clearInvitePath()
-    setScreen('landing')
+    navigate('/', { replace: true })
   }
 
-  if (screen === 'join-invite') {
+  function handleProfileSaved(user) {
+    const normalizedUser = normalizeUser(user)
+
+    saveUser(normalizedUser)
+    setCurrentUser(normalizedUser)
+  }
+
+  if (route.screen === 'join-invite') {
     return (
       <JoinInvitePage
-        code={directInviteCode}
+        code={route.inviteCode}
         currentUser={currentUser}
         onBack={handleBackToLanding}
         onContinue={handleInviteContinue}
@@ -182,27 +228,46 @@ function App() {
     )
   }
 
-  if (screen === 'auth') {
+  if (route.screen === 'register' || route.screen === 'login') {
+    const mode = route.screen
+
     return (
       <AuthPage
+        key={mode}
+        mode={mode}
+        notice={mode === 'login' ? authNotice : ''}
         helperText={
           pendingInvite
-            ? `Inicia sesión o crea una cuenta para unirte al servidor ${pendingInvite.server.name}.`
+            ? `Crea una cuenta o inicia sesión para unirte a ${pendingInvite.server.name}.`
             : undefined
         }
-        onBack={handleBackToLanding}
         onAuthenticated={handleAuthenticated}
+        onBack={handleAuthBack}
+        onRegistered={handleRegistered}
+        onSwitchMode={(nextMode) => navigate(`/${nextMode}`)}
       />
     )
   }
 
-  if (screen === 'landing') {
+  if (route.screen === 'landing') {
     return (
       <LandingPage
         currentUser={currentUser}
         onJoinInvite={handleJoinInvite}
-        onLogin={() => setScreen('auth')}
-        onEnterApp={() => setScreen(currentUser ? 'home' : 'auth')}
+        onLogin={() => navigate('/login')}
+        onRegister={() => navigate('/register')}
+        onEnterApp={() => navigate(currentUser ? '/app' : '/login')}
+      />
+    )
+  }
+
+  if (route.screen === 'profile') {
+    return (
+      <ProfilePage
+        currentUser={currentUser}
+        onBack={() => navigate('/app')}
+        onLogout={handleLogout}
+        onSaved={handleProfileSaved}
       />
     )
   }
@@ -210,28 +275,29 @@ function App() {
   if (selectedServer) {
     return (
       <ServerPage
+        key={selectedServer.id}
         currentUser={currentUser}
         server={selectedServer}
+        servers={userServers.length > 0 ? userServers : [selectedServer]}
         onBack={() => setSelectedServer(null)}
         onLogout={handleLogout}
+        onProfile={() => navigate('/app/profile')}
+        onServerJoined={handleServerJoined}
+        onServerSelected={setSelectedServer}
       />
     )
   }
 
-  if (!currentUser) {
-    return (
-      <AuthPage
-        onBack={handleBackToLanding}
-        onAuthenticated={handleAuthenticated}
-      />
-    )
-  }
+  if (!currentUser) return null
 
   return (
-    <ChatHome
+    <AppHome
       currentUser={currentUser}
       onLogout={handleLogout}
+      onProfile={() => navigate('/app/profile')}
+      onServerJoined={handleServerJoined}
       onServerSelected={setSelectedServer}
+      onServersLoaded={handleServersLoaded}
     />
   )
 }
