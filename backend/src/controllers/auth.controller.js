@@ -31,7 +31,7 @@ export const register = async (req, res) => {
         const email = req.body.email?.trim().toLowerCase();
         const password = req.body.password;
         const name = req.body.name?.trim();
-        const username = req.body.username?.trim();
+        const username = req.body.username?.trim().toLowerCase();
 
         if (!email || !password || !name || !username) {
             return res.status(400).json({
@@ -51,11 +51,15 @@ export const register = async (req, res) => {
             });
         }
 
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({
+            $or: [{ email }, { username }]
+        }).select("email username");
 
         if (existingUser) {
             return res.status(409).json({
-                message: "Ya existe un usuario registrado con ese email."
+                message: existingUser.email === email
+                    ? "Ya existe un usuario registrado con ese email."
+                    : "Ese username ya está en uso. Elige otro."
             });
         }
 
@@ -82,6 +86,16 @@ export const register = async (req, res) => {
             user: formatUser(user)
         });
     } catch (error) {
+        if (error?.code === 11000) {
+            const duplicatedField = Object.keys(error.keyPattern ?? {})[0];
+
+            return res.status(409).json({
+                message: duplicatedField === "username"
+                    ? "Ese username ya está en uso. Elige otro."
+                    : "Ya existe un usuario registrado con ese email."
+            });
+        }
+
         return res.status(500).json({
             message: "Error al registrar usuario.",
             error: error.message
