@@ -31,10 +31,17 @@ export const register = async (req, res) => {
         const email = req.body.email?.trim().toLowerCase();
         const password = req.body.password;
         const name = req.body.name?.trim();
+        const username = req.body.username?.trim();
 
-        if (!email || !password || !name) {
+        if (!email || !password || !name || !username) {
             return res.status(400).json({
-                message: "Nombre, email y contraseña son obligatorios."
+                message: "Nombre, username, email y contraseña son obligatorios."
+            });
+        }
+
+        if (name.length < 3 || username.length < 3) {
+            return res.status(400).json({
+                message: "El nombre y el username deben tener al menos 3 caracteres."
             });
         }
 
@@ -65,7 +72,7 @@ export const register = async (req, res) => {
             email,
             passwordHash,
             name,
-            username: name,
+            username,
             avatarUrl,
             status: 'offline',
         })
