@@ -16,6 +16,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    avatarUrl: {
+      type: String,
+      default: null
+    },
     type: {
       type: String,
       enum: ["public", "private", "system"],
