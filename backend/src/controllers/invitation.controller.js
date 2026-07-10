@@ -122,11 +122,15 @@ export const joinByInvitation = async (req, res) => {
         serverId: invitation.serverId._id
       },
       {
-        userId: user._id,
-        serverId: invitation.serverId._id,
-        role: "member",
-        active: true,
-        joinedAt: new Date()
+        $set: {
+          active: true
+        },
+        $setOnInsert: {
+          userId: user._id,
+          serverId: invitation.serverId._id,
+          role: "member",
+          joinedAt: new Date()
+        }
       },
       {
         upsert: true,

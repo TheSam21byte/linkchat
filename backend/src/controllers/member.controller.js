@@ -20,12 +20,12 @@ export const getMembersByServer = async (req, res) => {
       .populate("serverId", "name description")
       .sort({ joinedAt: 1 });
 
-    res.json({
+    return res.json({
       total: members.length,
       members
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error al listar miembros",
       error: error.message
     });
@@ -42,20 +42,26 @@ export const getServersByUser = async (req, res) => {
       });
     }
 
+    if (String(req.user._id) !== String(userId)) {
+      return res.status(403).json({
+        message: "No puedes consultar servidores de otro usuario"
+      });
+    }
+
     const memberships = await Member.find({
       userId,
       active: true
     })
-      .populate("serverId", "name description")
-      .populate("userId", "username status")
+      .populate("serverId", "name description ownerId")
+      .populate("userId", "name username avatarUrl status")
       .sort({ joinedAt: -1 });
 
-    res.json({
+    return res.json({
       total: memberships.length,
       memberships
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error al listar servidores del usuario",
       error: error.message
     });
@@ -129,6 +135,133 @@ export const joinServer = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Error al unirse al servidor",
+      error: error.message
+    });
+  }
+};
+
+export const kickMember = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(memberId)) {
+      return res.status(400).json({
+        message: "memberId no válido"
+      });
+    }
+
+    const targetMember = await Member.findById(memberId);
+
+    if (!targetMember || !targetMember.active) {
+      return res.status(404).json({
+        message: "Miembro no encontrado"
+      });
+    }
+
+    const actorMember = await Member.findOne({
+      userId: req.user._id,
+      serverId: targetMember.serverId,
+      active: true
+    });
+
+    if (!actorMember) {
+      return res.status(403).json({
+        message: "No perteneces a este servidor"
+      });
+    }
+
+    if (!["owner", "admin"].includes(actorMember.role)) {
+      return res.status(403).json({
+        message: "No tienes permisos para expulsar usuarios"
+      });
+    }
+
+    if (String(targetMember.userId) === String(req.user._id)) {
+      return res.status(400).json({
+        message: "No puedes expulsarte a ti mismo"
+      });
+    }
+
+    if (targetMember.role === "owner") {
+      return res.status(403).json({
+        message: "No se puede expulsar al owner del servidor"
+      });
+    }
+
+    if (actorMember.role === "admin" && targetMember.role !== "member") {
+      return res.status(403).json({
+        message: "Un admin solo puede expulsar members"
+      });
+    }
+
+    targetMember.active = false;
+    await targetMember.save();
+
+    return res.json({
+      message: "Usuario expulsado correctamente",
+      member: targetMember
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error al expulsar usuario",
+      error: error.message
+    });
+  }
+};
+
+export const updateMemberRole = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    const { role } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(memberId)) {
+      return res.status(400).json({
+        message: "memberId no válido"
+      });
+    }
+
+    if (!["admin", "member"].includes(role)) {
+      return res.status(400).json({
+        message: "Rol no válido. Solo se permite admin o member"
+      });
+    }
+
+    const targetMember = await Member.findById(memberId);
+
+    if (!targetMember || !targetMember.active) {
+      return res.status(404).json({
+        message: "Miembro no encontrado"
+      });
+    }
+
+    const actorMember = await Member.findOne({
+      userId: req.user._id,
+      serverId: targetMember.serverId,
+      active: true
+    });
+
+    if (!actorMember || actorMember.role !== "owner") {
+      return res.status(403).json({
+        message: "Solo el owner puede cambiar roles"
+      });
+    }
+
+    if (targetMember.role === "owner") {
+      return res.status(403).json({
+        message: "No se puede cambiar el rol del owner"
+      });
+    }
+
+    targetMember.role = role;
+    await targetMember.save();
+
+    return res.json({
+      message: "Rol actualizado correctamente",
+      member: targetMember
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error al actualizar rol",
       error: error.message
     });
   }
