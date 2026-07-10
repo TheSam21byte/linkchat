@@ -3,36 +3,19 @@ import Server from "../models/Server.js";
 import User from "../models/User.js";
 import Member from "../models/Member.js";
 import Channel from "../models/Channel.js";
+import Message from "../models/Message.js";
 
 export const createServer = async (req, res) => {
   try {
-    const { name, description, ownerUsername } = req.body;
+    const { name, description } = req.body;
 
-    if (!name || !ownerUsername) {
+    if (!name) {
       return res.status(400).json({
-        message: "El nombre del servidor y ownerUsername son obligatorios"
+        message: "El nombre del servidor es obligatorio"
       });
     }
 
-    const username = ownerUsername.trim();
-
-    const owner = await User.findOneAndUpdate(
-      { username },
-      {
-        $set: {
-          status: "online",
-          lastSeen: null
-        },
-        $setOnInsert: {
-          username
-        }
-      },
-      {
-        new: true,
-        upsert: true,
-        runValidators: true
-      }
-    );
+    const owner = req.user;
 
     const server = await Server.create({
       name: name.trim(),
@@ -53,7 +36,7 @@ export const createServer = async (req, res) => {
       serverId: server._id
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Servidor creado correctamente",
       server,
       owner: {
@@ -64,7 +47,7 @@ export const createServer = async (req, res) => {
       defaultChannel: channel
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error al crear servidor",
       error: error.message
     });
@@ -111,6 +94,70 @@ export const getServerById = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Error al obtener servidor",
+      error: error.message
+    });
+  }
+};
+
+export const updateServer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    const server = await Server.findByIdAndUpdate(
+      id,
+      {
+        ...(name ? { name: name.trim() } : {}),
+        ...(description !== undefined ? { description } : {})
+      },
+      { returnDocument: "after", runValidators: true }
+    );
+
+    if (!server) {
+      return res.status(404).json({
+        message: "Servidor no encontrado"
+      });
+    }
+
+    res.json({
+      message: "Servidor actualizado correctamente",
+      server
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al actualizar servidor",
+      error: error.message
+    });
+  }
+};
+
+export const deleteServer = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const server = await Server.findById(id);
+
+    if (!server) {
+      return res.status(404).json({
+        message: "Servidor no encontrado"
+      });
+    }
+
+    const channels = await Channel.find({ serverId: id }).select("_id");
+    const channelIds = channels.map((channel) => channel._id);
+
+    await Message.deleteMany({ channelId: { $in: channelIds } });
+    await Channel.deleteMany({ serverId: id });
+    await Member.deleteMany({ serverId: id });
+    await Server.findByIdAndDelete(id);
+
+    res.json({
+      message: "Servidor eliminado correctamente",
+      server
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al eliminar servidor",
       error: error.message
     });
   }

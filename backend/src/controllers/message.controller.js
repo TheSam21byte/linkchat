@@ -13,16 +13,56 @@ export const getMessagesByChannel = async (req, res) => {
     }
 
     const messages = await Message.find({ channelId })
+      .populate("userId", "name username avatarUrl status")
       .sort({ createdAt: -1 })
       .limit(limit);
 
-    res.json({
+    return res.json({
       total: messages.length,
       messages: messages.reverse()
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error al obtener mensajes",
+      error: error.message
+    });
+  }
+};
+
+export const deleteMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "ID de mensaje no válido"
+      });
+    }
+
+    const message = await Message.findByIdAndDelete(id);
+
+    if (!message) {
+      return res.status(404).json({
+        message: "Mensaje no encontrado"
+      });
+    }
+
+    const io = req.app.get("io");
+
+    if (io) {
+      io.to(String(message.channelId)).emit("message_deleted", {
+        messageId: String(message._id),
+        channelId: String(message.channelId)
+      });
+    }
+
+    return res.json({
+      message: "Mensaje eliminado correctamente",
+      deletedMessage: message
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error al eliminar mensaje",
       error: error.message
     });
   }

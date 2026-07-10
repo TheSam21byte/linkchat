@@ -8,7 +8,9 @@ import {
 import { io } from 'socket.io-client'
 import AppShell from '../components/app-shell'
 import UserAvatar from '../components/user-avatar'
-import { getChannelMessages, getServerChannels } from '../services/chat-api'
+import { getServerChannels } from '../services/channels-api'
+import { getChannelMessages } from '../services/messages-api'
+import { getAuthToken } from '../lib/api-client'
 import { getServerMembers } from '../services/members-api'
 import { getTypingMessage } from '../utils/typing'
 
@@ -128,7 +130,11 @@ function ServerPage({
   useEffect(() => {
     if (!selectedChannelId || !currentUser?.username) return
 
-    const socket = io(SOCKET_URL)
+    const socket = io(SOCKET_URL, {
+      auth: {
+        token: getAuthToken(),
+      },
+    })
     const remoteTypingTimeouts = remoteTypingTimeoutsRef.current
     socketRef.current = socket
 
@@ -237,16 +243,14 @@ function ServerPage({
     }
 
     socketRef.current.emit('send_message', {
-      username: currentUser.username,
       channelId: selectedChannel.id,
       message: messageText.trim(),
-      avatarUrl: currentUser.avatarUrl,
     })
 
     socketRef.current.emit('typing_stop', {
-      username: currentUser.username,
       channelId: selectedChannel.id,
     })
+
     window.clearTimeout(typingStopTimeoutRef.current)
     setMessageText('')
   }
@@ -261,20 +265,17 @@ function ServerPage({
 
     if (!value.trim()) {
       socketRef.current.emit('typing_stop', {
-        username: currentUser.username,
         channelId: selectedChannel.id,
       })
       return
     }
 
     socketRef.current.emit('typing_start', {
-      username: currentUser.username,
       channelId: selectedChannel.id,
     })
 
     typingStopTimeoutRef.current = window.setTimeout(() => {
       socketRef.current?.emit('typing_stop', {
-        username: currentUser.username,
         channelId: selectedChannel.id,
       })
     }, 1500)
@@ -346,115 +347,115 @@ function ServerPage({
       sidebarContent={sidebarContent}
       mobileTitle={selectedChannel ? `# ${selectedChannel.name}` : server.name}
     >
-        <section className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
-          <header className="flex min-h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 dark:border-white/10 dark:bg-slate-950 sm:min-h-20 sm:px-5">
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-normal text-teal-600 dark:text-teal-400">Canal</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
-                {isSocketConnected ? 'Conectado en tiempo real' : 'Sin conexión en tiempo real'}
-              </p>
-              <h2 className="flex min-w-0 items-center gap-1.5 text-lg font-semibold sm:gap-2 sm:text-xl">
-                <Hash className="shrink-0" size={20} />
-                <span className="truncate">{selectedChannel?.name ?? 'Selecciona un canal'}</span>
-              </h2>
-            </div>
-          </header>
-
-          {error ? (
-            <div className="mx-4 mt-4 flex shrink-0 items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
-              <AlertCircle className="mt-0.5 shrink-0" size={18} />
-              <span>{error}</span>
-            </div>
-          ) : null}
-
-          {channelNotice ? (
-            <div className="pointer-events-none absolute inset-x-3 top-20 z-20 min-w-0 overflow-hidden rounded-lg border border-teal-200 bg-teal-50/95 px-3 py-2.5 text-sm font-semibold text-teal-800 shadow-lg backdrop-blur dark:border-teal-800 dark:bg-teal-950/95 dark:text-teal-200 sm:inset-x-4 sm:top-24 sm:px-4 sm:py-3">
-              <p className="truncate">{channelNotice}</p>
-            </div>
-          ) : null}
-
-          <div
-            ref={messagesContainerRef}
-            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4"
-          >
-            {!selectedChannel ? (
-              <div className="grid h-full place-items-center text-center text-slate-500 dark:text-slate-400">
-                <p>Selecciona un canal para conversar en este servidor.</p>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="grid h-full place-items-center text-center text-slate-500 dark:text-slate-400">
-                <p>No hay mensajes todavía en #{selectedChannel.name}.</p>
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {messages.map((message) => {
-                  const isMine = message.username === currentUser.username
-                  const member = membersByUsername.get(message.username?.toLowerCase())
-                  const messageUser = isMine
-                    ? currentUser
-                    : {
-                        name: member?.name,
-                        username: message.username,
-                        avatarUrl: member?.avatarUrl ?? message.avatarUrl,
-                      }
-
-                  return (
-                    <div
-                      key={message._id ?? message.id}
-                      className={`flex w-full items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}
-                    >
-                      <UserAvatar
-                        user={messageUser}
-                        className="size-8 shrink-0 sm:size-9"
-                        textClassName="text-xs"
-                      />
-                      <article
-                        className={`max-w-[85%] rounded-xl px-3 py-2.5 shadow-sm sm:max-w-[min(75%,42rem)] sm:px-4 sm:py-3 ${isMine ? 'bg-teal-700 text-white' : 'bg-white text-slate-900 dark:bg-slate-800 dark:text-slate-100'}`}
-                      >
-                        <div className="mb-1 flex items-center justify-between gap-3">
-                          <strong className={`text-sm ${isMine ? 'text-teal-50' : 'text-teal-700 dark:text-teal-300'}`}>
-                            {message.username}
-                          </strong>
-                          <time className={`text-xs ${isMine ? 'text-teal-50' : 'text-slate-400'}`}>
-                            {formatTime(message.createdAt)}
-                          </time>
-                        </div>
-                        <p className="break-words">{message.content}</p>
-                      </article>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="shrink-0 border-t border-slate-200 bg-white px-3 pb-3 pt-1.5 dark:border-white/10 dark:bg-slate-950 sm:px-4 sm:pb-4 sm:pt-2">
-            <p
-              className="h-6 truncate px-1 text-sm font-medium text-slate-500 dark:text-slate-400"
-              aria-live="polite"
-            >
-              {typingMessage}
+      <section className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
+        <header className="flex min-h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 dark:border-white/10 dark:bg-slate-950 sm:min-h-20 sm:px-5">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-normal text-teal-600 dark:text-teal-400">Canal</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+              {isSocketConnected ? 'Conectado en tiempo real' : 'Sin conexión en tiempo real'}
             </p>
-            <form className="flex gap-3" onSubmit={handleSendMessage}>
-              <input
-                className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100 dark:border-white/10 dark:bg-slate-800 dark:text-white dark:focus:ring-teal-900 sm:min-h-12 sm:px-4"
-                type="text"
-                placeholder={selectedChannel ? `Mensaje para #${selectedChannel.name}` : 'Selecciona un canal'}
-                value={messageText}
-                onChange={handleMessageChange}
-                disabled={!selectedChannel}
-              />
-              <button
-                type="submit"
-                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700 sm:min-h-12 sm:px-5"
-                disabled={!selectedChannel || !messageText.trim()}
-              >
-                <Send size={18} />
-                <span className="max-sm:hidden">Enviar</span>
-              </button>
-            </form>
+            <h2 className="flex min-w-0 items-center gap-1.5 text-lg font-semibold sm:gap-2 sm:text-xl">
+              <Hash className="shrink-0" size={20} />
+              <span className="truncate">{selectedChannel?.name ?? 'Selecciona un canal'}</span>
+            </h2>
           </div>
-        </section>
+        </header>
+
+        {error ? (
+          <div className="mx-4 mt-4 flex shrink-0 items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+            <AlertCircle className="mt-0.5 shrink-0" size={18} />
+            <span>{error}</span>
+          </div>
+        ) : null}
+
+        {channelNotice ? (
+          <div className="pointer-events-none absolute inset-x-3 top-20 z-20 min-w-0 overflow-hidden rounded-lg border border-teal-200 bg-teal-50/95 px-3 py-2.5 text-sm font-semibold text-teal-800 shadow-lg backdrop-blur dark:border-teal-800 dark:bg-teal-950/95 dark:text-teal-200 sm:inset-x-4 sm:top-24 sm:px-4 sm:py-3">
+            <p className="truncate">{channelNotice}</p>
+          </div>
+        ) : null}
+
+        <div
+          ref={messagesContainerRef}
+          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4"
+        >
+          {!selectedChannel ? (
+            <div className="grid h-full place-items-center text-center text-slate-500 dark:text-slate-400">
+              <p>Selecciona un canal para conversar en este servidor.</p>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="grid h-full place-items-center text-center text-slate-500 dark:text-slate-400">
+              <p>No hay mensajes todavía en #{selectedChannel.name}.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {messages.map((message) => {
+                const isMine = message.username === currentUser.username
+                const member = membersByUsername.get(message.username?.toLowerCase())
+                const messageUser = isMine
+                  ? currentUser
+                  : {
+                    name: member?.name,
+                    username: message.username,
+                    avatarUrl: member?.avatarUrl ?? message.avatarUrl,
+                  }
+
+                return (
+                  <div
+                    key={message._id ?? message.id}
+                    className={`flex w-full items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}
+                  >
+                    <UserAvatar
+                      user={messageUser}
+                      className="size-8 shrink-0 sm:size-9"
+                      textClassName="text-xs"
+                    />
+                    <article
+                      className={`max-w-[85%] rounded-xl px-3 py-2.5 shadow-sm sm:max-w-[min(75%,42rem)] sm:px-4 sm:py-3 ${isMine ? 'bg-teal-700 text-white' : 'bg-white text-slate-900 dark:bg-slate-800 dark:text-slate-100'}`}
+                    >
+                      <div className="mb-1 flex items-center justify-between gap-3">
+                        <strong className={`text-sm ${isMine ? 'text-teal-50' : 'text-teal-700 dark:text-teal-300'}`}>
+                          {message.username}
+                        </strong>
+                        <time className={`text-xs ${isMine ? 'text-teal-50' : 'text-slate-400'}`}>
+                          {formatTime(message.createdAt)}
+                        </time>
+                      </div>
+                      <p className="break-words">{message.content}</p>
+                    </article>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 border-t border-slate-200 bg-white px-3 pb-3 pt-1.5 dark:border-white/10 dark:bg-slate-950 sm:px-4 sm:pb-4 sm:pt-2">
+          <p
+            className="h-6 truncate px-1 text-sm font-medium text-slate-500 dark:text-slate-400"
+            aria-live="polite"
+          >
+            {typingMessage}
+          </p>
+          <form className="flex gap-3" onSubmit={handleSendMessage}>
+            <input
+              className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100 dark:border-white/10 dark:bg-slate-800 dark:text-white dark:focus:ring-teal-900 sm:min-h-12 sm:px-4"
+              type="text"
+              placeholder={selectedChannel ? `Mensaje para #${selectedChannel.name}` : 'Selecciona un canal'}
+              value={messageText}
+              onChange={handleMessageChange}
+              disabled={!selectedChannel}
+            />
+            <button
+              type="submit"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700 sm:min-h-12 sm:px-5"
+              disabled={!selectedChannel || !messageText.trim()}
+            >
+              <Send size={18} />
+              <span className="max-sm:hidden">Enviar</span>
+            </button>
+          </form>
+        </div>
+      </section>
     </AppShell>
   )
 }

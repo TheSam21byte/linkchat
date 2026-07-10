@@ -17,6 +17,8 @@ const io = new Server(httpServer, {
   cors: socketCorsOptions
 });
 
+app.set("io", io);
+
 configureChatSocket(io);
 
 const PORT = process.env.PORT || 4000;
