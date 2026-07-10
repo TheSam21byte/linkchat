@@ -6,20 +6,6 @@ import {
   MeetingSessionConfiguration,
   MeetingSessionStatusCode,
 } from "amazon-chime-sdk-js";
-import { ChimeMeetingApiRepository } from "../http/repositories/ChimeMeetingApiRepository.js";
-import { FirebaseVoicePresenceRepository } from "../firebase/FirebaseVoicePresenceRepository.js";
-import { HttpClient } from "../http/HttpClient.js";
-import { LocalAuthTokenStorage } from "../storage/LocalAuthTokenStorage.js";
-
-function createDefaultVoiceRepositories() {
-  const tokenStorage = new LocalAuthTokenStorage();
-  const httpClient = new HttpClient(tokenStorage);
-
-  return {
-    voiceMeetingRepository: new ChimeMeetingApiRepository(httpClient),
-    voicePresenceRepository: new FirebaseVoicePresenceRepository(),
-  };
-}
 
 export class ChimeMeetingManager {
   constructor({
@@ -34,11 +20,14 @@ export class ChimeMeetingManager {
     voiceMeetingRepository,
     voicePresenceRepository,
   }) {
-    const defaultRepos = createDefaultVoiceRepositories();
-    this.voiceMeetingRepository =
-      voiceMeetingRepository ?? defaultRepos.voiceMeetingRepository;
-    this.voicePresenceRepository =
-      voicePresenceRepository ?? defaultRepos.voicePresenceRepository;
+    if (!voiceMeetingRepository || !voicePresenceRepository) {
+      throw new Error(
+        "ChimeMeetingManager requiere voiceMeetingRepository y voicePresenceRepository."
+      );
+    }
+
+    this.voiceMeetingRepository = voiceMeetingRepository;
+    this.voicePresenceRepository = voicePresenceRepository;
 
     this.serverId = serverId
     this.channelId = channelId

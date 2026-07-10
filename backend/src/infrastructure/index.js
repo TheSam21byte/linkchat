@@ -1,4 +1,5 @@
-export { connectDB } from "./config/db.js";
+export { connectDB, disconnectDB } from "./config/db.js";
+export { validateEnv, getMongoUri } from "./config/env.js";
 export { corsOptions, socketCorsOptions } from "./config/cors.js";
 export { s3Client, getS3PublicUrl, isS3Configured } from "./config/s3.js";
 

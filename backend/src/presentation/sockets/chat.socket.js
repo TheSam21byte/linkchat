@@ -11,12 +11,13 @@ export function configureChatSocket(io) {
   io.on("connection", (socket) => {
     console.log("🟢 Cliente conectado:", socket.id);
 
-    socket.on("join_channel", ({ username, channelId }) => {
+    socket.on("join_channel", ({ username, channelId, avatarUrl }) => {
       socket.join(channelId);
 
       connectedUsers.set(socket.id, {
         username,
         channelId,
+        avatarUrl,
       });
 
       io.to(channelId).emit(
@@ -44,6 +45,24 @@ export function configureChatSocket(io) {
       }
     });
 
+    socket.on("typing_start", ({ username, channelId }) => {
+      if (!username || !channelId) return;
+
+      socket.to(channelId).emit("typing_update", {
+        username,
+        isTyping: true,
+      });
+    });
+
+    socket.on("typing_stop", ({ username, channelId }) => {
+      if (!username || !channelId) return;
+
+      socket.to(channelId).emit("typing_update", {
+        username,
+        isTyping: false,
+      });
+    });
+
     socket.on("get_users", ({ channelId }) => {
       const users = [];
 
@@ -52,6 +71,7 @@ export function configureChatSocket(io) {
           users.push({
             socketId,
             username: userData.username,
+            avatarUrl: userData.avatarUrl,
           });
         }
       }
@@ -70,6 +90,11 @@ export function configureChatSocket(io) {
       const userData = connectedUsers.get(socket.id);
 
       if (userData) {
+        socket.to(userData.channelId).emit("typing_update", {
+          username: userData.username,
+          isTyping: false,
+        });
+
         io.to(userData.channelId).emit(
           "system_message",
           formatSystemMessage(`${userData.username} ha salido del canal`)
