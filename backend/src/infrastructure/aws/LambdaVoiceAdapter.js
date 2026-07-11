@@ -1,8 +1,5 @@
-const DEFAULT_CHIME_VOICE_API_URL =
-  "https://9v1fgc9ahf.execute-api.us-east-1.amazonaws.com/default/servidor-voz-chime";
-
 export class LambdaVoiceAdapter {
-  constructor(apiUrl = process.env.CHIME_VOICE_API_URL ?? DEFAULT_CHIME_VOICE_API_URL) {
+  constructor(apiUrl = process.env.CHIME_VOICE_API_URL?.trim()) {
     this.apiUrl = apiUrl;
   }
 
@@ -11,6 +8,14 @@ export class LambdaVoiceAdapter {
   }
 
   async joinMeeting(payload) {
+    if (!this.apiUrl) {
+      const error = new Error(
+        "Falta CHIME_VOICE_API_URL en las variables de entorno para usar la Lambda de voz."
+      );
+      error.statusCode = 503;
+      throw error;
+    }
+
     const lambdaResponse = await fetch(this.apiUrl, {
       method: "POST",
       headers: {
