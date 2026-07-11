@@ -4,6 +4,8 @@ import {
   getMyServersUseCase,
   getServersByUserUseCase,
   joinServerUseCase,
+  kickMemberUseCase,
+  updateMemberRoleUseCase,
 } from "../../composition/container.js";
 
 export async function getMembersByServer(req, res) {
@@ -49,5 +51,30 @@ export async function joinServer(req, res) {
     return res.status(201).json(result);
   } catch (error) {
     return sendHttpError(res, error, "Error al unirse al servidor.");
+  }
+}
+
+export async function updateMemberRole(req, res) {
+  try {
+    const result = await updateMemberRoleUseCase.execute({
+      memberId: req.params.memberId,
+      role: req.body.role,
+      actorUserId: req.user._id,
+    });
+    return res.json(result);
+  } catch (error) {
+    return sendHttpError(res, error, "Error al actualizar rol.");
+  }
+}
+
+export async function kickMember(req, res) {
+  try {
+    const result = await kickMemberUseCase.execute({
+      memberId: req.params.memberId,
+      actorUserId: req.user._id,
+    });
+    return res.json(result);
+  } catch (error) {
+    return sendHttpError(res, error, "Error al expulsar miembro.");
   }
 }

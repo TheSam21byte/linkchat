@@ -81,3 +81,54 @@ export class GetServerByIdUseCase {
     return server;
   }
 }
+
+export class UpdateServerUseCase {
+  constructor(serverRepository) {
+    this.serverRepository = serverRepository;
+  }
+
+  async execute({ id, name, description }) {
+    EntityId.create(id);
+
+    const updateData = {};
+
+    if (name?.trim()) updateData.name = name.trim();
+    if (description !== undefined) updateData.description = description?.trim?.() ?? description;
+
+    if (Object.keys(updateData).length === 0) {
+      throw new ValidationError("No hay datos para actualizar.");
+    }
+
+    const server = await this.serverRepository.updateById(id, updateData);
+
+    if (!server) {
+      throw new NotFoundError("Servidor no encontrado.");
+    }
+
+    return {
+      message: "Servidor actualizado correctamente",
+      server,
+    };
+  }
+}
+
+export class DeleteServerUseCase {
+  constructor(serverRepository) {
+    this.serverRepository = serverRepository;
+  }
+
+  async execute({ id }) {
+    EntityId.create(id);
+
+    const server = await this.serverRepository.deleteById(id);
+
+    if (!server) {
+      throw new NotFoundError("Servidor no encontrado.");
+    }
+
+    return {
+      message: "Servidor eliminado correctamente",
+      server,
+    };
+  }
+}

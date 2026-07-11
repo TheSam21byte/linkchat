@@ -63,3 +63,52 @@ export class GetChannelByIdUseCase {
     return channel;
   }
 }
+
+export class UpdateChannelUseCase {
+  constructor(channelRepository) {
+    this.channelRepository = channelRepository;
+  }
+
+  async execute({ id, name }) {
+    EntityId.create(id);
+
+    if (!name?.trim()) {
+      throw new ValidationError("El nombre del canal es obligatorio.");
+    }
+
+    const channel = await this.channelRepository.updateById(id, { name: name.trim() });
+
+    if (!channel) {
+      throw new NotFoundError("Canal no encontrado.");
+    }
+
+    return {
+      message: "Canal actualizado correctamente",
+      channel,
+    };
+  }
+}
+
+export class DeleteChannelUseCase {
+  constructor(channelRepository, messageRepository) {
+    this.channelRepository = channelRepository;
+    this.messageRepository = messageRepository;
+  }
+
+  async execute({ id }) {
+    EntityId.create(id);
+
+    const channel = await this.channelRepository.deleteById(id);
+
+    if (!channel) {
+      throw new NotFoundError("Canal no encontrado.");
+    }
+
+    await this.messageRepository.deleteByChannelId(id);
+
+    return {
+      message: "Canal eliminado correctamente",
+      channel,
+    };
+  }
+}

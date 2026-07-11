@@ -22,4 +22,8 @@ export class IMemberRepository {
   async upsertActiveMembership(_data) {
     throw new Error("IMemberRepository.upsertActiveMembership no implementado.");
   }
+
+  async findById(_memberId) {
+    throw new Error("IMemberRepository.findById no implementado.");
+  }
 }

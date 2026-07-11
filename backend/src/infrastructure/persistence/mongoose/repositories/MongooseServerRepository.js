@@ -19,4 +19,15 @@ export class MongooseServerRepository extends IServerRepository {
   async save(server) {
     return server.save();
   }
+
+  async updateById(id, data) {
+    return Server.findByIdAndUpdate(id, data, {
+      returnDocument: "after",
+      runValidators: true,
+    });
+  }
+
+  async deleteById(id) {
+    return Server.findByIdAndDelete(id);
+  }
 }

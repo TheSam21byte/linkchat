@@ -22,23 +22,34 @@ import {
   CreateServerUseCase,
   GetServerByIdUseCase,
   GetServersUseCase,
+  UpdateServerUseCase,
+  DeleteServerUseCase,
 } from "../../application/use-cases/server/ServerUseCases.js";
 import {
   CreateChannelUseCase,
   GetChannelByIdUseCase,
   GetChannelsByServerUseCase,
+  UpdateChannelUseCase,
+  DeleteChannelUseCase,
 } from "../../application/use-cases/channel/ChannelUseCases.js";
 import {
   GetMembersByServerUseCase,
   GetMyServersUseCase,
   GetServersByUserUseCase,
   JoinServerUseCase,
+  KickMemberUseCase,
+  UpdateMemberRoleUseCase,
 } from "../../application/use-cases/member/MemberUseCases.js";
 import {
   GetMessagesByChannelUseCase,
   SendMessageUseCase,
+  DeleteMessageUseCase,
 } from "../../application/use-cases/message/MessageUseCases.js";
-import { GetUsersUseCase, StartGuestUserUseCase } from "../../application/use-cases/user/UserUseCases.js";
+import {
+  GetUsersUseCase,
+  StartGuestUserUseCase,
+  UpdateUserProfileUseCase,
+} from "../../application/use-cases/user/UserUseCases.js";
 import {
   CreateInvitationUseCase,
   DisableInvitationUseCase,
@@ -88,6 +99,8 @@ export const createServerUseCase = new CreateServerUseCase(
 );
 export const getServersUseCase = new GetServersUseCase(serverRepository);
 export const getServerByIdUseCase = new GetServerByIdUseCase(serverRepository);
+export const updateServerUseCase = new UpdateServerUseCase(serverRepository);
+export const deleteServerUseCase = new DeleteServerUseCase(serverRepository);
 
 export const createChannelUseCase = new CreateChannelUseCase(
   serverRepository,
@@ -95,17 +108,29 @@ export const createChannelUseCase = new CreateChannelUseCase(
 );
 export const getChannelsByServerUseCase = new GetChannelsByServerUseCase(channelRepository);
 export const getChannelByIdUseCase = new GetChannelByIdUseCase(channelRepository);
+export const updateChannelUseCase = new UpdateChannelUseCase(channelRepository);
+export const deleteChannelUseCase = new DeleteChannelUseCase(
+  channelRepository,
+  messageRepository
+);
 
 export const getMembersByServerUseCase = new GetMembersByServerUseCase(memberRepository);
 export const getServersByUserUseCase = new GetServersByUserUseCase(memberRepository);
 export const getMyServersUseCase = new GetMyServersUseCase(memberRepository);
 export const joinServerUseCase = new JoinServerUseCase(serverRepository, memberRepository);
+export const updateMemberRoleUseCase = new UpdateMemberRoleUseCase(memberRepository);
+export const kickMemberUseCase = new KickMemberUseCase(memberRepository);
 
 export const getMessagesByChannelUseCase = new GetMessagesByChannelUseCase(messageRepository);
 export const sendMessageUseCase = new SendMessageUseCase(messageRepository);
+export const deleteMessageUseCase = new DeleteMessageUseCase(messageRepository);
 
 export const startGuestUserUseCase = new StartGuestUserUseCase(userRepository);
 export const getUsersUseCase = new GetUsersUseCase(userRepository);
+export const updateUserProfileUseCase = new UpdateUserProfileUseCase(
+  userRepository,
+  avatarStorage
+);
 
 export const createInvitationUseCase = new CreateInvitationUseCase(
   serverRepository,

@@ -1,5 +1,8 @@
 import { sendHttpError } from "../utils/HttpErrorHandler.js";
-import { getMessagesByChannelUseCase } from "../../composition/container.js";
+import {
+  deleteMessageUseCase,
+  getMessagesByChannelUseCase,
+} from "../../composition/container.js";
 
 export async function getMessagesByChannel(req, res) {
   try {
@@ -10,5 +13,14 @@ export async function getMessagesByChannel(req, res) {
     return res.json(result);
   } catch (error) {
     return sendHttpError(res, error, "Error al obtener mensajes.");
+  }
+}
+
+export async function deleteMessage(req, res) {
+  try {
+    const result = await deleteMessageUseCase.execute({ id: req.params.id });
+    return res.json(result);
+  } catch (error) {
+    return sendHttpError(res, error, "Error al eliminar mensaje.");
   }
 }

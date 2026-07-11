@@ -87,3 +87,81 @@ export class JoinServerUseCase {
     };
   }
 }
+
+export class UpdateMemberRoleUseCase {
+  constructor(memberRepository) {
+    this.memberRepository = memberRepository;
+  }
+
+  async execute({ memberId, role, actorUserId }) {
+    EntityId.create(memberId);
+
+    if (!["admin", "member"].includes(role)) {
+      throw new ValidationError("Rol no válido. Solo se permite admin o member.");
+    }
+
+    const targetMember = await this.memberRepository.findById(memberId);
+
+    if (!targetMember || !targetMember.active) {
+      throw new NotFoundError("Miembro no encontrado.");
+    }
+
+    const actorMember = await this.memberRepository.findByUserAndServer(
+      actorUserId,
+      targetMember.serverId
+    );
+
+    if (!actorMember || actorMember.role !== "owner") {
+      throw new ValidationError("Solo el owner puede cambiar roles.");
+    }
+
+    if (targetMember.role === "owner") {
+      throw new ValidationError("No se puede cambiar el rol del owner.");
+    }
+
+    targetMember.role = role;
+    await this.memberRepository.save(targetMember);
+
+    return {
+      message: "Rol actualizado correctamente.",
+      member: targetMember,
+    };
+  }
+}
+
+export class KickMemberUseCase {
+  constructor(memberRepository) {
+    this.memberRepository = memberRepository;
+  }
+
+  async execute({ memberId, actorUserId }) {
+    EntityId.create(memberId);
+
+    const targetMember = await this.memberRepository.findById(memberId);
+
+    if (!targetMember || !targetMember.active) {
+      throw new NotFoundError("Miembro no encontrado.");
+    }
+
+    const actorMember = await this.memberRepository.findByUserAndServer(
+      actorUserId,
+      targetMember.serverId
+    );
+
+    if (!actorMember || !["owner", "admin"].includes(actorMember.role)) {
+      throw new ValidationError("No tienes permisos para expulsar miembros.");
+    }
+
+    if (targetMember.role === "owner") {
+      throw new ValidationError("No se puede expulsar al owner.");
+    }
+
+    targetMember.active = false;
+    await this.memberRepository.save(targetMember);
+
+    return {
+      message: "Usuario expulsado correctamente.",
+      member: targetMember,
+    };
+  }
+}

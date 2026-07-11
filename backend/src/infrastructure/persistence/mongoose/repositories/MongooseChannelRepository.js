@@ -13,4 +13,15 @@ export class MongooseChannelRepository extends IChannelRepository {
   async create(channelData) {
     return Channel.create(channelData);
   }
+
+  async updateById(id, data) {
+    return Channel.findByIdAndUpdate(id, data, {
+      returnDocument: "after",
+      runValidators: true,
+    });
+  }
+
+  async deleteById(id) {
+    return Channel.findByIdAndDelete(id);
+  }
 }

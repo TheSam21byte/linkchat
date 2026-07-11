@@ -48,3 +48,23 @@ export class SendMessageUseCase {
     });
   }
 }
+
+export class DeleteMessageUseCase {
+  constructor(messageRepository) {
+    this.messageRepository = messageRepository;
+  }
+
+  async execute({ id }) {
+    EntityId.create(id);
+
+    const message = await this.messageRepository.deleteById(id);
+
+    if (!message) {
+      throw new NotFoundError("Mensaje no encontrado.");
+    }
+
+    return {
+      message: "Mensaje eliminado correctamente",
+    };
+  }
+}

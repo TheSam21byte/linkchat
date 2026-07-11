@@ -28,6 +28,10 @@ export class MongooseMemberRepository extends IMemberRepository {
     return member.save();
   }
 
+  async findById(memberId) {
+    return Member.findById(memberId);
+  }
+
   async upsertActiveMembership({ userId, serverId, role = "member", nickname = null }) {
     return Member.findOneAndUpdate(
       { userId, serverId },

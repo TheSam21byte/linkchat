@@ -6,4 +6,12 @@ export class IMessageRepository {
   async create(_messageData) {
     throw new Error("IMessageRepository.create no implementado.");
   }
+
+  async deleteById(_id) {
+    throw new Error("IMessageRepository.deleteById no implementado.");
+  }
+
+  async deleteByChannelId(_channelId) {
+    throw new Error("IMessageRepository.deleteByChannelId no implementado.");
+  }
 }

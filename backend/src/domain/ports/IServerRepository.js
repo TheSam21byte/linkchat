@@ -14,4 +14,12 @@ export class IServerRepository {
   async save(_server) {
     throw new Error("IServerRepository.save no implementado.");
   }
+
+  async updateById(_id, _data) {
+    throw new Error("IServerRepository.updateById no implementado.");
+  }
+
+  async deleteById(_id) {
+    throw new Error("IServerRepository.deleteById no implementado.");
+  }
 }

@@ -13,4 +13,12 @@ export class MongooseMessageRepository extends IMessageRepository {
   async create(messageData) {
     return Message.create(messageData);
   }
+
+  async deleteById(id) {
+    return Message.findByIdAndDelete(id);
+  }
+
+  async deleteByChannelId(channelId) {
+    return Message.deleteMany({ channelId });
+  }
 }
